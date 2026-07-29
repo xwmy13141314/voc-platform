@@ -1,0 +1,24 @@
+# VoC 痛点挖掘平台 — Python 依赖
+# VoC Pain Point Mining Platform — Python Dependencies
+
+# Web 框架 / Web Framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.5.0
+
+# 桌面应用 / Desktop App
+pywebview>=4.4.0
+
+# 数据抓取 / Data Crawling
+yt-dlp>=2024.1.0
+instaloader>=4.10.0
+requests>=2.31.0
+
+# AI 分析 / AI Analysis
+openai>=1.12.0
+
+# 工具库 / Utilities
+langdetect>=1.0.9
+
+# 打包 / Packaging (开发时需要 / Required for building)
+# pyinstaller>=6.3.0
