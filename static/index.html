@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VoC 痛点挖掘平台</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/static/echarts.min.js"></script>
+  <script src="/static/marked.umd.js"></script>
   <style>
     :root, [data-theme="dark"] {
       --bg: #0f1419; --bg2: #1a2332; --bg3: #243447;
@@ -181,18 +181,129 @@
     .report-content table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; }
     .report-content th, .report-content td { border: 1px solid var(--rule); padding: 0.4rem 0.8rem; font-size: 0.82rem; }
     .report-content th { background: var(--bg3); }
+    .job-history { padding: 1rem 1.5rem; }
+    .job-row { display:flex; align-items:center; gap:0.7rem; padding:0.65rem 0; border-bottom:1px solid var(--rule); font-size:0.8rem; }
+    .job-row:last-child { border-bottom:0; }
+    .job-kind { min-width:3.2rem; color:var(--accent); }
+    .job-message { flex:1; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .job-status { min-width:4.2rem; text-align:center; border-radius:4px; padding:0.15rem 0.35rem; background:var(--bg3); }
+    .job-status.succeeded { color:var(--accent3); } .job-status.empty { color:var(--warn); } .job-status.failed { color:var(--danger); }
+    .job-status.cancelled { color:var(--warn); } .job-status.running { color:var(--accent); }
+    .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; }
+    .edit-grid .full { grid-column:1 / -1; }
+    @media (max-width: 700px) { .edit-grid { grid-template-columns:1fr; } .edit-grid .full { grid-column:auto; } }
+
+    /* 六帽视角切换器 */
+    .hat-switcher { display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:1.5rem; padding:0.8rem; background:var(--bg2); border-radius:10px; border:1px solid var(--rule); }
+    .hat-btn { padding:0.4rem 0.9rem; font-size:0.8rem; border:1px solid var(--rule); background:var(--bg3); color:var(--muted); border-radius:6px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:0.3rem; }
+    .hat-btn:hover { border-color:var(--accent); color:var(--ink); }
+    .hat-btn.active { font-weight:600; color:var(--bg); }
+    .hat-btn .hat-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+    .hat-overview { border:1px solid var(--accent); color:var(--accent); font-weight:600; }
+    .hat-overview .hat-dot { background:var(--accent); }
+    .hat-overview.active { background:var(--accent); color:var(--bg); box-shadow:0 0 8px rgba(0,212,255,0.4); }
+    .hat-overview.active .hat-dot { background:var(--bg); }
+    .hat-white .hat-dot { background:#f5f5f5; border:1px solid #ccc; } .hat-white.active { background:#f5f5f5; }
+    .hat-red .hat-dot { background:#ef4444; } .hat-red.active { background:#ef4444; }
+    .hat-black .hat-dot { background:#1a1a1a; border:1px solid #555; } .hat-black.active { background:#333; }
+    .hat-yellow .hat-dot { background:#fbbf24; } .hat-yellow.active { background:#fbbf24; }
+    .hat-green .hat-dot { background:#4ade80; } .hat-green.active { background:#4ade80; }
+    .hat-blue .hat-dot { background:#3b82f6; } .hat-blue.active { background:#3b82f6; }
+
+    /* 四元组详情面板 */
+    .tuple-panel { background:var(--bg2); border:1px solid var(--rule); border-radius:10px; padding:1.2rem; margin-top:1.5rem; }
+    .tuple-panel .panel-title { font-size:0.85rem; color:var(--accent); margin-bottom:0.8rem; font-weight:600; }
+    .tuple-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; }
+    @media (max-width:700px) { .tuple-grid { grid-template-columns:1fr; } }
+    .tuple-item { background:var(--bg3); border-radius:8px; padding:0.8rem; border-left:3px solid var(--accent); }
+    .tuple-item .tuple-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; margin-bottom:0.3rem; }
+    .tuple-item .tuple-value { font-size:0.85rem; color:var(--ink); }
+
+    /* 竞品规格管理 */
+    .spec-row { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0; border-bottom:1px solid var(--rule); font-size:0.8rem; }
+    .spec-row:last-child { border-bottom:0; }
+    .spec-row .spec-brand { color:var(--accent2); font-weight:600; min-width:80px; }
+    .spec-row .spec-model { color:var(--muted); min-width:100px; }
+    .spec-row .spec-key { color:var(--accent); min-width:100px; }
+    .spec-row .spec-val { color:var(--ink); flex:1; }
+    .spec-form-row { display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr auto; gap:0.4rem; margin-bottom:0.6rem; }
+    .spec-form-row input, .spec-form-row select { font-size:0.75rem; padding:0.3rem 0.4rem; }
+    @media (max-width:700px) { .spec-form-row { grid-template-columns:1fr 1fr; } }
+
+    /* 改良提案生成器 */
+    .proposal-section { background:var(--bg2); border:1px solid var(--rule); border-radius:10px; padding:1.2rem; margin-bottom:1.5rem; }
+    .proposal-section .section-title { font-size:0.9rem; color:var(--accent); margin-bottom:0.8rem; font-weight:600; }
+    .proposal-controls { display:flex; gap:0.8rem; flex-wrap:wrap; align-items:end; margin-bottom:1rem; }
+    .proposal-controls .pc-group { display:flex; flex-direction:column; gap:0.2rem; }
+    .proposal-controls .pc-group label { font-size:0.72rem; color:var(--muted); }
+    .proposal-controls .pc-group input, .proposal-controls .pc-group select { font-size:0.8rem; padding:0.35rem 0.5rem; min-width:120px; }
+    .proposal-meta { display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:0.8rem; font-size:0.78rem; color:var(--muted); }
+    .proposal-meta span { background:var(--bg3); padding:2px 8px; border-radius:10px; }
+    /* 痛点聚类页 */
+    .cluster-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1rem; }
+    .cluster-card { background:var(--bg2); border:1px solid var(--rule); border-radius:12px; padding:1.1rem; cursor:pointer; transition:border-color .2s, transform .15s; }
+    .cluster-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+    .cluster-card .cc-name { font-size:1rem; font-weight:700; color:var(--ink); line-height:1.35; }
+    .cluster-card .cc-slug { font-size:0.72rem; color:var(--muted); font-family:Consolas,monospace; margin-top:2px; }
+    .cluster-card .cc-count { text-align:right; flex-shrink:0; }
+    .cluster-card .cc-count strong { display:block; font-size:1.3rem; color:var(--accent); }
+    .cluster-card .cc-count span { font-size:0.7rem; color:var(--muted); }
+    .cluster-card .cc-desc { font-size:0.8rem; color:var(--muted); margin:0.55rem 0 0; line-height:1.55; }
+    .cluster-card .cc-kw { display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.55rem; }
+    .cluster-card .cc-kw span { background:var(--bg3); color:var(--ink); font-size:0.72rem; padding:2px 8px; border-radius:10px; }
+    .cluster-card .cc-meta { display:flex; gap:0.7rem; align-items:center; flex-wrap:wrap; font-size:0.73rem; color:var(--muted); margin-top:0.7rem; padding-top:0.6rem; border-top:1px dashed var(--rule); }
+    .cc-cluster-comment { border-bottom:1px solid var(--rule); padding:0.7rem 0; }
+    .cc-cluster-comment:last-child { border-bottom:none; }
+    /* 建议报告 v2 */
+    .sug-card { background:var(--bg2); border:1px solid var(--rule); border-radius:12px; padding:1.1rem 1.2rem; margin-bottom:1rem; }
+    .sug-head { display:flex; align-items:flex-start; gap:0.9rem; }
+    .sug-rank { flex-shrink:0; width:2.2rem; height:2.2rem; border-radius:8px; background:var(--bg3); display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--muted); font-size:0.95rem; }
+    .sug-rank.top { background:var(--accent); color:#fff; }
+    .sug-title { font-size:1rem; font-weight:700; color:var(--ink); line-height:1.4; }
+    .sug-title .sug-cluster { font-size:0.72rem; color:var(--muted); font-weight:400; margin-left:0.5rem; }
+    .sug-score { text-align:right; flex-shrink:0; }
+    .sug-score strong { display:block; font-size:1.25rem; color:var(--accent); }
+    .sug-score span { font-size:0.68rem; color:var(--muted); }
+    .sug-badges { display:flex; flex-wrap:wrap; gap:0.45rem; margin-top:0.6rem; align-items:center; }
+    .sug-badge { font-size:0.72rem; padding:2px 9px; border-radius:10px; background:var(--bg3); color:var(--ink); }
+    .sug-badge.eff-L { background:#dcfce7; color:#166534; }
+    .sug-badge.eff-M { background:#fef9c3; color:#854d0e; }
+    .sug-badge.eff-H { background:#fee2e2; color:#991b1b; }
+    .sug-badge.ai { background:#dbeafe; color:#1e40af; }
+    .sug-detail { font-size:0.85rem; color:var(--ink); line-height:1.65; margin-top:0.7rem; }
+    .sug-detail p { margin:0.3rem 0; }
+    .sug-factors { font-size:0.72rem; color:var(--muted); margin-top:0.55rem; line-height:1.6; }
+    .sug-evidence-toggle { margin-top:0.8rem; }
+    .sug-evidence-toggle button { background:none; border:1px dashed var(--rule); border-radius:8px; color:var(--accent); font-size:0.78rem; padding:0.35rem 0.9rem; cursor:pointer; }
+    .sug-evidence-toggle button:hover { border-color:var(--accent); }
+    .sug-evidence { margin-top:0.7rem; border-top:1px dashed var(--rule); padding-top:0.2rem; }
+    .ev-item { border-bottom:1px solid var(--rule); padding:0.7rem 0; }
+    .ev-item:last-child { border-bottom:none; }
+    .ev-meta { display:flex; flex-wrap:wrap; gap:0.55rem; align-items:center; font-size:0.7rem; color:var(--muted); }
+    .ev-meta a { color:var(--accent); text-decoration:none; }
+    .ev-meta a:hover { text-decoration:underline; }
+    .ev-quote { font-size:0.82rem; color:var(--ink); line-height:1.55; margin:0.3rem 0; }
+    .ev-zh { font-size:0.75rem; color:var(--muted); line-height:1.5; }
+    .ev-root { font-size:0.72rem; color:var(--muted); margin-top:0.25rem; }
+    .rpt-ov { background:var(--bg2); border:1px solid var(--rule); border-radius:12px; padding:1rem 1.2rem; margin-bottom:1.2rem; font-size:0.8rem; color:var(--muted); line-height:1.7; }
+    .rpt-ov strong { color:var(--accent); }
+    .rpt-queue { width:100%; border-collapse:collapse; font-size:0.8rem; margin-bottom:1.2rem; }
+    .rpt-queue th, .rpt-queue td { text-align:left; padding:0.5rem 0.7rem; border-bottom:1px solid var(--rule); }
+    .rpt-queue th { color:var(--muted); font-weight:600; font-size:0.74rem; }
+    .rpt-queue td { color:var(--ink); }
   </style>
 </head>
 <body>
 
   <div class="header">
     <div>
-      <h1>VoC 痛点挖掘平台 <span class="version">v0.6</span></h1>
+      <h1>VoC 痛点挖掘平台 <span class="version">v0.9.1</span></h1>
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchPage('dashboard', this)">仪表盘</button>
       <button class="nav-tab" onclick="switchPage('crawl', this)">数据采集</button>
       <button class="nav-tab" onclick="switchPage('insights', this)">洞察看板</button>
+      <button class="nav-tab" onclick="switchPage('cluster', this)">痛点聚类</button>
       <button class="nav-tab" onclick="switchPage('report', this)">改良建议</button>
     </div>
     <div class="header-actions">
@@ -238,7 +349,7 @@
 
     <div class="filters">
       <div class="filter-group"><label>品牌</label><select id="filterBrand" onchange="loadPainPoints()"><option value="">全部</option></select></div>
-      <div class="filter-group"><label>平台</label><select id="filterPlatform" onchange="loadPainPoints()"><option value="">全部</option><option value="youtube">YouTube</option></select></div>
+      <div class="filter-group"><label>平台</label><select id="filterPlatform" onchange="loadPainPoints()"><option value="">全部</option><option value="youtube">YouTube</option><option value="reddit">Reddit</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option></select></div>
       <div class="filter-group"><label>严重度</label><select id="filterSeverity" onchange="loadPainPoints()"><option value="1">1-全部</option><option value="2">2-影响体验</option><option value="3">3-致命缺陷</option></select></div>
       <div class="filter-group"><label>数量</label><input type="number" id="filterLimit" value="100" min="10" max="500" onchange="loadPainPoints()"></div>
       <div class="filter-spacer"></div>
@@ -307,7 +418,11 @@
         </div>
         <div style="display:flex;gap:1rem;align-items:center;">
           <button class="btn analyze" id="btnCrawl" onclick="triggerCrawl()">开始抓取</button>
+          <button class="btn" id="btnCancelCrawl" onclick="cancelCrawlJob()" style="display:none;color:var(--danger);">取消</button>
           <span id="crawlStatus" style="color:var(--muted);font-size:0.85rem;"></span>
+          <div id="crawlProgress" style="display:none;flex:1;max-width:300px;">
+            <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;"><div id="crawlProgressBar" style="background:var(--accent);height:100%;width:0%;transition:width 0.3s;"></div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -320,10 +435,42 @@
         </div>
       </div>
     </div>
+    <div class="table-wrap" style="margin-top:1.5rem;">
+      <div class="table-header"><h2>任务历史</h2><button class="btn sm" onclick="loadJobHistory()">刷新</button></div>
+      <div id="jobHistory" class="job-history"><span style="color:var(--muted);">暂无任务</span></div>
+    </div>
   </div>
 
   <!-- ========== 洞察看板页 ========== -->
   <div class="page" id="page-insights">
+    <div id="analysisProgressCard" style="margin-bottom:1.5rem;border:1px solid var(--accent);border-radius:12px;padding:1.2rem;background:var(--bg);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+        <div style="font-size:1rem;font-weight:600;color:var(--ink);">AI 分析进度</div>
+        <div id="progressStats" style="font-size:0.8rem;color:var(--muted);">加载中...</div>
+      </div>
+      <div style="height:24px;background:var(--bg2);border-radius:8px;overflow:hidden;margin-bottom:0.8rem;">
+        <div id="progressBar" style="height:100%;width:0%;border-radius:8px;background:linear-gradient(90deg,#0284c7,#0ea5e9);transition:width 0.5s;display:flex;align-items:center;padding-left:0.8rem;font-size:0.75rem;font-weight:600;color:#fff;"></div>
+      </div>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+        <button class="btn analyze" id="btnContinueAnalyze" onclick="continueAnalyzeAll()" style="font-size:0.8rem;padding:0.4rem 0.9rem;">继续分析全部未分析</button>
+        <button class="btn" id="btnReanalyze" onclick="reanalyzeAll()" style="font-size:0.8rem;padding:0.4rem 0.9rem;background:var(--warn);color:#fff;border:none;border-radius:6px;cursor:pointer;">重新分析（升级新版 Prompt）</button>
+        <span style="font-size:0.75rem;color:var(--muted);">批量：</span>
+        <select id="analyzeBatch2" style="padding:0.3rem 0.6rem;border-radius:6px;border:1px solid var(--rule);background:var(--bg2);color:var(--ink);font-size:0.8rem;"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="500">500</option><option value="1000">1000</option><option value="all">全部</option></select>
+        <span id="progressHint" style="font-size:0.75rem;color:var(--muted);"></span>
+      </div>
+    </div>
+    <div class="hat-switcher" id="hatSwitcher">
+      <button class="hat-btn hat-overview active" onclick="switchHatView('white',this)"><span class="hat-dot"></span>总览</button>
+      <span style="color:var(--rule);font-size:1.2rem;align-self:center;margin:0 0.3rem;">|</span>
+      <span style="color:var(--muted);font-size:0.8rem;align-self:center;margin-right:0.3rem;">六帽视角：</span>
+      <button class="hat-btn hat-white" onclick="switchHatView('white',this)"><span class="hat-dot"></span>白帽·事实</button>
+      <button class="hat-btn hat-red" onclick="switchHatView('red',this)"><span class="hat-dot"></span>红帽·情绪</button>
+      <button class="hat-btn hat-black" onclick="switchHatView('black',this)"><span class="hat-dot"></span>黑帽·风险</button>
+      <button class="hat-btn hat-yellow" onclick="switchHatView('yellow',this)"><span class="hat-dot"></span>黄帽·价值</button>
+      <button class="hat-btn hat-green" onclick="switchHatView('green',this)"><span class="hat-dot"></span>绿帽·创新</button>
+      <button class="hat-btn hat-blue" onclick="switchHatView('blue',this)"><span class="hat-dot"></span>蓝帽·管控</button>
+    </div>
+    <div id="hatView-white" class="hat-view" style="display:block;">
     <div class="chart-grid">
       <div class="chart-card"><div class="chart-title">痛点标签分布 Top 15</div><div class="chart-body" id="chartTagDist"></div></div>
       <div class="chart-card"><div class="chart-title">严重度分布</div><div class="chart-body" id="chartSeverity"></div></div>
@@ -340,16 +487,98 @@
       <div class="chart-title">型号痛点排名</div>
       <div class="chart-body" id="chartModelRank" style="height:400px;"></div>
     </div>
+    </div>
+    <div id="hatView-red" class="hat-view" style="display:none;"><div class="chart-grid"><div class="chart-card"><div class="chart-title">情感分布</div><div class="chart-body" id="chartSentiment2"></div></div><div class="chart-card"><div class="chart-title">情绪类型分布</div><div class="chart-body" id="chartEmotion"></div></div></div></div>
+    <div id="hatView-black" class="hat-view" style="display:none;"><div class="chart-card" style="margin-bottom:1.5rem;"><div class="chart-title">致命缺陷（severity=3）分布</div><div class="chart-body" id="chartSev3"></div></div><div id="sev3List" style="max-height:500px;overflow-y:auto;"></div></div>
+    <div id="hatView-yellow" class="hat-view" style="display:none;"><div class="chart-card"><div class="chart-title">正面反馈标签排行</div><div class="chart-body" id="chartPositive"></div></div><div id="positiveList" style="margin-top:1rem;max-height:400px;overflow-y:auto;"></div></div>
+    <div id="hatView-green" class="hat-view" style="display:none;"><div class="chart-card" style="margin-bottom:1.5rem;"><div class="chart-title">用户最想改良的方向 Top 10</div><div class="chart-body" id="chartSolutionTags"></div></div><div id="solutionList" style="max-height:500px;overflow-y:auto;"></div></div>
+    <div id="hatView-blue" class="hat-view" style="display:none;"><div class="chart-grid"><div class="chart-card"><div class="chart-title">AI 分析覆盖率</div><div class="chart-body" id="chartCoverage" style="height:180px;"></div><div id="coverageInfo" style="text-align:center;"></div></div><div class="chart-card"><div class="chart-title">结构化字段填充率</div><div class="chart-body" id="chartFillRates" style="height:300px;"></div></div></div><div class="stats-grid" id="qcStats" style="margin-top:1.5rem;"></div><div id="goldStandardArea" style="margin-top:1rem;"></div></div>
+    <div class="chart-card" style="margin-top:1.5rem;">
+      <div class="chart-title">竞品规格回归分析（物理参数 × 负面声量占比）</div>
+      <div style="display:flex;gap:0.8rem;align-items:end;margin-bottom:0.8rem;flex-wrap:wrap;">
+        <div class="pc-group"><label>规格参数</label><input type="text" id="specKeyInput" placeholder="如: weight" style="width:140px;"></div>
+        <div class="pc-group"><label>痛点标签</label><input type="text" id="painTagInput" placeholder="如: weight" style="width:140px;"></div>
+        <button class="btn primary sm" onclick="loadSpecPain()">分析</button>
+      </div>
+      <div class="chart-body" id="chartSpecPain" style="height:400px;"></div>
+    </div>
+    <div class="tuple-panel" id="tuplePanel" style="display:none;">
+      <div class="panel-title">四元组详情（场景-硬件-行为-根因）</div>
+      <div class="tuple-grid" id="tupleGrid"></div>
+    </div>
+  </div>
+
+  <!-- ========== 痛点聚类页 ========== -->
+  <div class="page" id="page-cluster">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:0.8rem;">
+      <div>
+        <h2 style="color:var(--accent);">痛点聚类</h2>
+        <div style="font-size:0.8rem;color:var(--muted);" id="clusterVersionInfo">尚未运行聚类</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="clusterStatsGrid">
+      <div class="stat-card"><div class="label">主题簇</div><div class="value" id="statClusterTopics">0</div><div class="sub">语义聚类自动发现</div></div>
+      <div class="stat-card"><div class="label">已聚类评论</div><div class="value" id="statClusteredComments">0</div><div class="sub">已归入主题簇</div></div>
+      <div class="stat-card clickable" onclick="runFullClustering()"><div class="label">待聚类评论 <span class="arrow">→</span></div><div class="value" id="statPendingCluster">0</div><div class="sub">点击开始全量聚类</div></div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-group"><label>最小簇规模</label><input type="number" id="clusterMinSize" value="10" min="5" max="200" style="width:90px;"><span style="font-size:0.7rem;color:var(--muted);">越大簇越少越泛</span></div>
+      <div class="filter-group"><label>归簇阈值</label><input type="number" id="clusterThreshold" value="0.5" min="0" max="1" step="0.05" style="width:90px;"><span style="font-size:0.7rem;color:var(--muted);">增量模式相似度门槛</span></div>
+      <div class="filter-spacer"></div>
+      <button class="btn analyze" id="btnFullCluster" onclick="runFullClustering()">全量聚类</button>
+      <button class="btn" id="btnIncrCluster" onclick="runIncrementalClustering()">增量归簇</button>
+      <button class="btn" id="btnRenameClusters" onclick="renameClusters()" title="优先 AI 语义命名；LLM 不可用时自动降级为关键词命名">重新命名</button>
+    </div>
+
+    <div id="clusterJobHint" style="font-size:0.8rem;color:var(--muted);margin:0 0 1rem;min-height:1.1rem;"></div>
+    <div id="clusterList"></div>
   </div>
 
   <!-- ========== 改良建议页 ========== -->
   <div class="page" id="page-report">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-      <h2 style="color:var(--accent);">AI 改良建议报告</h2>
-      <button class="btn analyze" id="btnGenerate" onclick="generateReport()">生成报告</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.8rem;">
+      <div>
+        <h2 style="color:var(--accent);">AI 改良建议报告</h2>
+        <div style="font-size:0.78rem;color:var(--muted);" id="reportV2Meta">v2 · 程序统计 + 证据链可溯源（每条建议 ≥3 条评论证据）</div>
+      </div>
+      <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+        <button class="btn" id="btnExportHtml" onclick="exportReportHtml()" style="display:none;">导出 HTML</button>
+        <button class="btn" id="btnExportPdf" onclick="exportReportPdf()" style="display:none;">导出 PDF</button>
+        <button class="btn" onclick="generateReportLegacy()" id="btnGenerateLegacy" title="旧版：整篇 Markdown 交给 LLM 生成（需 API Key）">旧版报告</button>
+        <button class="btn analyze" id="btnGenerate" onclick="generateReportV2()">生成报告</button>
+      </div>
     </div>
-    <div id="reportArea">
-      <div class="empty"><div class="icon">📊</div><p>点击"生成报告"，AI 将基于已分析的痛点数据生成改良建议</p></div>
+
+    <div class="filters" style="margin-bottom:1rem;">
+      <div class="filter-group"><label>建议数 Top</label><input type="number" id="rptTopK" value="15" min="5" max="50" style="width:70px;"></div>
+      <div class="filter-group"><label>影响面权重</label><input type="number" id="rptWReach" value="0.35" min="0" max="1" step="0.05" style="width:70px;"></div>
+      <div class="filter-group"><label>负面权重</label><input type="number" id="rptWNeg" value="0.25" min="0" max="1" step="0.05" style="width:70px;"></div>
+      <div class="filter-group"><label>严重度权重</label><input type="number" id="rptWSev" value="0.25" min="0" max="1" step="0.05" style="width:70px;"></div>
+      <div class="filter-group"><label>趋势权重</label><input type="number" id="rptWTrend" value="0.15" min="0" max="1" step="0.05" style="width:70px;"></div>
+      <div class="filter-spacer"></div>
+      <span style="font-size:0.72rem;color:var(--muted);">优先级 = Σ(权重×因子)，权重无需求和为1（自动归一）</span>
+    </div>
+
+    <div id="reportV2Area"></div>
+    <div id="legacyReportWrap" style="display:none;">
+      <h3 style="color:var(--muted);font-size:0.9rem;margin:1.5rem 0 0.8rem;">旧版 LLM 报告（整篇 Markdown）</h3>
+      <div id="reportArea">
+        <div class="empty"><div class="icon">📊</div><p>点击"旧版报告"，AI 将基于已分析的痛点数据生成整篇 Markdown 建议</p></div>
+      </div>
+    </div>
+    <div class="proposal-section">
+      <div class="section-title">硬件规格改良提案生成器</div>
+      <div class="proposal-controls">
+        <div class="pc-group"><label>痛点标签</label><select id="proposalPainTag"><option value="battery">battery</option><option value="screen">screen</option><option value="waterproof">waterproof</option><option value="system">system</option><option value="weight">weight</option><option value="signal">signal</option><option value="camera">camera</option><option value="button">button</option><option value="charging">charging</option><option value="durability">durability</option><option value="app_pairing">app_pairing</option><option value="ota">ota</option><option value="ui">ui</option><option value="delay">delay</option></select></div>
+        <div class="pc-group"><label>品牌（可选）</label><select id="proposalBrand"><option value="">全部品牌</option></select></div>
+        <div class="pc-group"><label>最低严重度</label><select id="proposalMinSev"><option value="1">全部</option><option value="2" selected>影响体验+</option><option value="3">致命缺陷</option></select></div>
+        <div class="pc-group"><label>BOM 成本约束</label><input type="text" id="proposalBom" placeholder="如: 单机BOM上限$200" style="width:160px;"></div>
+        <div class="pc-group"><label>模具约束</label><input type="text" id="proposalMold" placeholder="如: 本代模具冻结" style="width:160px;"></div>
+        <button class="btn analyze" id="btnGenProposal" onclick="generateProposal()">生成提案</button>
+      </div>
+      <div id="proposalArea"><div class="empty"><div class="icon">🔧</div><p>选择痛点标签，点击"生成提案"，AI 将生成含证据链+建议规格+验收用例的改良提案</p></div></div>
     </div>
   </div>
   </div>
@@ -364,14 +593,132 @@
         <button class="btn primary" onclick="saveLLMConfig()">保存配置</button>
       </div>
       <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">Reddit Cookie 认证（备选）</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">
+          <b>备选方案 - Cookie 认证：</b>如果无法创建 OAuth 应用，可从浏览器提取 Reddit 登录 cookies。<br>
+          <b>使用步骤：</b><br>
+          1. 在浏览器中登录 Reddit (reddit.com)<br>
+          2. <b>完全关闭 Chrome/Edge 浏览器</b>（运行时会锁定 cookie 文件）<br>
+          3. 点击下方「提取 Cookies」按钮，系统会提取并缓存 cookies<br>
+          4. 提取成功后可重新打开浏览器，后续抓取使用缓存的 cookies<br>
+          <br>
+          如果提取失败，可切换为手动模式：从浏览器 DevTools → Application → Cookies → reddit.com 复制 cookies。
+        </div>
+        <div class="settings-row">
+          <label>认证方式</label>
+          <select id="redditCookieMethod" onchange="onRedditCookieMethodChange()">
+            <option value="browser">浏览器提取</option>
+            <option value="manual">手动粘贴 Cookies</option>
+          </select>
+        </div>
+        <div class="settings-row" id="redditBrowserRow">
+          <label>浏览器</label>
+          <select id="redditBrowser">
+            <option value="chrome">Chrome</option>
+            <option value="edge">Edge</option>
+            <option value="firefox">Firefox</option>
+            <option value="brave">Brave</option>
+            <option value="opera">Opera</option>
+          </select>
+        </div>
+        <div class="settings-row" id="redditManualCookiesRow" style="display:none;">
+          <label>Cookies</label>
+          <textarea id="redditManualCookies" rows="4" placeholder='reddit_session=xxx; token=yyy 或 [{"name":"reddit_session","value":"xxx"},...]' style="width:100%;font-family:Consolas,monospace;font-size:0.75rem;"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn primary" onclick="saveRedditCookieConfig()">保存配置</button>
+          <button class="btn" onclick="extractRedditCookies()" id="btnRedditExtract" style="background:#28a745;color:white;">提取 Cookies</button>
+          <button class="btn" onclick="testRedditCookieConnection()" id="btnRedditCookieTest">测试连接</button>
+        </div>
+        <div id="redditCookieStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;"></div>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">Reddit OAuth 配置（推荐 - PRAW 官方 API）</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">
+          <b style="color:var(--accent);">推荐方案：使用 PRAW 官方 API（最可靠）</b><br>
+          Reddit 已封锁所有匿名访问（JSON/RSS 均返回 403），PRAW 是官方推荐的 Python API 封装库，自动处理 OAuth 认证、速率限制和分页。<br>
+          <b>配置步骤：</b><br>
+          <a href="https://www.reddit.com/prefs/apps" target="_blank" style="color:var(--accent);">1. 打开 reddit.com/prefs/apps</a><br>
+          2. 页面底部找 <b>create another app...</b> → 选择 <b>script</b> 类型<br>
+          3. 名称填 voc-platform，redirect URI 填 http://localhost<br>
+          4. 创建后，应用名下方短字符串是 <b>Client ID</b>，secret 旁是 <b>Client Secret</b><br>
+          5. 填入下方 Client ID 和 Client Secret 并保存（用户名密码可留空，使用只读模式）<br>
+          6. 点击「诊断」按钮验证配置是否正确
+        </div>
+        <div class="settings-row"><label>Client ID</label><input type="text" id="redditClientId" placeholder="应用 ID"></div>
+        <div class="settings-row"><label>Client Secret</label><input type="password" id="redditClientSecret" placeholder="应用密钥（留空保留原值）"></div>
+        <div class="settings-row"><label>Reddit 用户名（可选）</label><input type="text" id="redditUsername" placeholder="留空使用只读模式"></div>
+        <div class="settings-row"><label>Reddit 密码（可选）</label><input type="password" id="redditPassword" placeholder="留空保留原值"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn primary" onclick="saveRedditConfig()">保存</button>
+          <button class="btn" onclick="testRedditConnection()" id="btnRedditTest">测试连接</button>
+          <button class="btn" onclick="diagnoseReddit()" id="btnRedditDiagnose" style="background:#17a2b8;color:white;">诊断</button>
+        </div>
+        <div id="redditDiagnoseResult" style="font-size:0.75rem;margin-top:0.5rem;display:none;padding:0.6rem;border-radius:6px;background:var(--bg-card);border:1px solid var(--rule);"></div>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">Instagram 账号配置</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">Instagram 需要登录才能抓取评论。配置账号后，系统会自动登录并保存 session 供后续复用。<br>建议使用小号，避免主号被限制。未配置时以匿名模式运行（功能受限）。</div>
+        <div class="settings-row"><label>Instagram 用户名</label><input type="text" id="igUsername" placeholder="Instagram 用户名"></div>
+        <div class="settings-row"><label>Instagram 密码</label><input type="password" id="igPassword" placeholder="留空保留原值"></div>
+        <button class="btn primary" onclick="saveInstagramConfig()">保存</button>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">Facebook Cookies 配置</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">Facebook 需要登录 cookies 才能抓取帖子和评论。获取方法：<br>1. 用浏览器登录 Facebook → 2. 安装 <a href="https://chrome.google.com/webstore/detail/editthiscookie/opnffgfhgnnpegahdjchccfhdonaldog" target="_blank" style="color:var(--accent);">EditThisCookie</a> 扩展 → 3. 访问 facebook.com → 4. 点击扩展导出 cookies（JSON 格式）→ 5. 将 JSON 粘贴到下方</div>
+        <div class="settings-row"><label>Cookies (JSON 格式)</label><textarea id="fbCookies" rows="4" placeholder='[{"name":"c_user","value":"..."},...]' style="width:100%;font-family:Consolas,monospace;font-size:0.75rem;"></textarea></div>
+        <button class="btn primary" onclick="saveFacebookConfig()">保存</button>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">评论质量过滤</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">入库前过滤低质量评论（太短 / 纯表情 / 纯链接 / 低赞），从源头降低信噪比与 LLM 分析成本。<br>被过滤的评论<b>不会删除</b>，仅标记为已过滤、不进入分析队列；调整阈值后点击「重算」可将新规则应用到全部历史评论，无需重新抓取。</div>
+        <div class="settings-row"><label>启用过滤</label><select id="qfEnabled"><option value="true">启用</option><option value="false">关闭（全部通过）</option></select></div>
+        <div class="settings-row"><label>有效长度下限</label><input type="number" id="qfMinWords" min="0" step="1" style="width:100px;"><span style="font-size:0.72rem;color:var(--muted);">中文按字数、英文按词数，低于此值过滤</span></div>
+        <div class="settings-row"><label>纯表情过滤</label><select id="qfEmojiOnly"><option value="true">启用</option><option value="false">关闭</option></select></div>
+        <div class="settings-row"><label>纯链接过滤</label><select id="qfLinkOnly"><option value="true">启用</option><option value="false">关闭</option></select></div>
+        <div class="settings-row"><label>链接垃圾过滤</label><div style="display:flex;gap:8px;align-items:center;"><select id="qfLinkSpam"><option value="true">启用</option><option value="false">关闭</option></select><input type="number" id="qfLinkSpamMinWords" min="1" step="1" style="width:80px;"></div><span style="font-size:0.72rem;color:var(--muted);">原文含 URL 且（残留文本少于该词数 或 命中促销话术如 buy here / use code / % off / official store）→ 过滤（拦导购带货评论，真实用户长评论不受影响）</span></div>
+        <div class="settings-row"><label>Reddit 最低点赞</label><input type="number" id="qfLikesReddit" min="0" step="1" style="width:100px;"><span style="font-size:0.72rem;color:var(--muted);">0 = 不按点赞过滤</span></div>
+        <div class="settings-row"><label>楼中楼深度阈值</label><input type="number" id="qfDeepDepth" min="1" step="1" style="width:100px;"><span style="font-size:0.72rem;color:var(--muted);">深度 ≥ 此值仅打标记并扣质量分，不过滤</span></div>
+        <div class="settings-row"><label>深层回复扣分</label><input type="number" id="qfDeepPenalty" min="0" max="1" step="0.05" style="width:100px;"><span style="font-size:0.72rem;color:var(--muted);">质量分扣减幅度（0-1）</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn primary" onclick="saveFilterConfig()">保存规则</button>
+          <button class="btn" onclick="recomputeFilters()" id="btnQfRecompute">按当前规则重算全部评论</button>
+        </div>
+        <div id="qfStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;line-height:1.5;"></div>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">报告导出配置</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">设置导出文件的保存目录。导出 HTML 报告时会自动保存到该目录；导出 PDF 时通过系统打印对话框选择保存位置。</div>
+        <div class="settings-row"><label>导出目录</label><div style="display:flex;gap:8px;"><input type="text" id="exportDir" placeholder="默认：桌面" style="flex:1;"><button class="btn" onclick="pickExportFolder()" id="btnPickFolder">浏览</button></div></div>
+        <button class="btn primary" onclick="saveExportConfig()">保存</button>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
       <div class="settings-section"><div class="settings-title">竞品品牌管理</div>
         <div style="display:flex;gap:8px;margin-bottom:0.8rem;"><input type="text" id="newBrandName" placeholder="品牌名" style="flex:1;"><input type="text" id="newBrandKeyword" placeholder="搜索关键词" style="flex:2;"><button class="btn primary" onclick="addNewBrand()">添加</button></div>
         <div id="brandList" style="max-height:250px;overflow-y:auto;"></div>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">竞品硬件规格管理</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">录入竞品硬件规格参数（机身重量/电池容量/防护等级/屏幕亮度/按键行程等），用于 Spec-Pain 回归分析。</div>
+        <div class="spec-form-row">
+          <select id="specBrandSelect" style="font-size:0.75rem;"></select>
+          <input type="text" id="specModelInput" placeholder="型号" style="font-size:0.75rem;">
+          <input type="text" id="specCategoryInput" placeholder="类别(如:机身)" style="font-size:0.75rem;">
+          <input type="text" id="specKeyInput2" placeholder="参数名(如:weight)" style="font-size:0.75rem;">
+          <input type="text" id="specValueInput" placeholder="值(如:420)" style="font-size:0.75rem;">
+          <button class="btn primary sm" onclick="addCompetitorSpec()">添加</button>
+        </div>
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.6rem;">
+          <input type="text" id="specUnitInput" placeholder="单位(如:g)" style="flex:1;font-size:0.75rem;">
+          <input type="text" id="specUrlInput" placeholder="来源URL(可选)" style="flex:2;font-size:0.75rem;">
+        </div>
+        <div id="specList" style="max-height:300px;overflow-y:auto;"></div>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="commentsModal" onclick="if(event.target===this)closeModal('commentsModal')"><div class="modal large"><span class="close" onclick="closeModal('commentsModal')">&times;</span><h3>评论浏览（按品牌分类）</h3><div id="commentsBrowserContent"></div></div></div>
   <div class="modal-overlay" id="analysesModal" onclick="if(event.target===this)closeModal('analysesModal')"><div class="modal large"><span class="close" onclick="closeModal('analysesModal')">&times;</span><h3>分析详情</h3><div style="margin-bottom:1rem;display:flex;gap:0.8rem;flex-wrap:wrap;"><select id="analysisFilterBrand" onchange="loadAnalysesBrowser()"></select><select id="analysisFilterSeverity" onchange="loadAnalysesBrowser()"><option value="1">全部</option><option value="2">影响体验</option><option value="3">致命缺陷</option></select><span id="analysisCount" style="color:var(--muted);font-size:0.85rem;">0 条</span></div><div id="analysesBrowserContent" style="max-height:550px;overflow-y:auto;"></div></div></div>
+  <div class="modal-overlay" id="analysisEditModal" onclick="if(event.target===this)closeModal('analysisEditModal')"><div class="modal large"><span class="close" onclick="closeModal('analysisEditModal')">&times;</span><h3>人工修正分析</h3><form id="analysisEditForm" onsubmit="saveAnalysisEdit(event)"><input type="hidden" id="editCommentId"><div class="edit-grid"><div><label>情感评分（1-5）</label><input type="number" id="editSentiment" min="1" max="5" required></div><div><label>严重度（1-3）</label><input type="number" id="editSeverity" min="1" max="3" required></div><div><label>痛点分类（逗号分隔）</label><input type="text" id="editCategories" placeholder="hardware, software"></div><div><label>痛点标签（逗号分隔）</label><input type="text" id="editTags" placeholder="battery, camera"></div><div><label>产品型号</label><input type="text" id="editProductMatch"></div><div><label>置信度（0-1）</label><input type="number" id="editConfidence" min="0" max="1" step="0.01"></div><div class="full"><label>中文摘要</label><input type="text" id="editSummary" required maxlength="500"></div><div class="full"><label>中文翻译</label><textarea id="editTranslation" rows="3"></textarea></div><div class="full"><label>用户方案</label><textarea id="editSolution" rows="3"></textarea></div></div><div style="display:flex;justify-content:flex-end;gap:0.8rem;margin-top:1rem;"><button type="button" class="btn" onclick="closeModal('analysisEditModal')">取消</button><button type="submit" class="btn primary" id="btnSaveAnalysis">保存修正</button></div></form></div></div>
   <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal('modal')"><div class="modal"><span class="close" onclick="closeModal('modal')">&times;</span><h3 id="modalTitle">详情</h3><div id="modalContent"></div></div></div>
   <div class="toast" id="toast"></div>
 
@@ -391,6 +738,8 @@
       if(btn) btn.classList.add('active');
       if (name==='insights') loadInsights();
       if (name==='crawl') loadCrawlPage();
+      if (name==='cluster') loadClusters();
+      if (name==='report') loadReportV2();
     }
 
     // === 数据采集页 ===
@@ -401,17 +750,17 @@
     }
     async function loadCrawlPlatforms() {
       try {
-        const r=await fetch(`${API}/api/platforms`); platformsData=await r.json();
-        const s=document.getElementById('crawlPlatform');
-        s.innerHTML=platformsData.map(p=>`<option value="${p.id}">${p.name}${p.comment_supported?'':' (仅元数据)'}</option>`).join('');
+          const r=await fetch(`${API}/api/platforms`); platformsData=await r.json();
+          const s=document.getElementById('crawlPlatform');
+         s.replaceChildren(...platformsData.map(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name+(p.comment_supported?'':' (仅元数据)');return o;}));
         onCrawlPlatformChange();
       } catch(e) { console.error('load platforms', e); }
     }
     async function loadCrawlBrands() {
       try {
-        const r=await fetch(`${API}/api/brands`); crawlBrandsData=await r.json();
-        const s=document.getElementById('crawlBrand');
-        s.innerHTML='<option value="">全部品牌</option>'+crawlBrandsData.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+          const r=await fetch(`${API}/api/brands`); crawlBrandsData=await r.json();
+          const s=document.getElementById('crawlBrand');
+         s.replaceChildren(...[{name:'',label:'全部品牌'},...crawlBrandsData.map(b=>({name:b.name,label:b.name}))].map(b=>{const o=document.createElement('option');o.value=b.name;o.textContent=b.label;return o;}));
         onCrawlBrandChange();
       } catch(e) { console.error('load crawl brands', e); }
     }
@@ -421,14 +770,63 @@
       if(!p) return;
       const hint=p.hint||'';
       const engine=p.engine?`[${p.engine}] `:'';
-      document.getElementById('platformHint').textContent=engine+hint;
+      const configBadge=p.config_status===false?' ⚠️ 未配置':'';
+      const configHint=p.config_hint?(' '+p.config_hint):'';
+      document.getElementById('platformHint').textContent=engine+hint+configBadge+configHint;
+      document.getElementById('platformHint').style.color=p.config_status===false?'var(--warn)':'var(--muted)';
+      // 平台动态 placeholder：AliExpress 输入商品链接而非搜索词
+      const kw=document.getElementById('crawlKeyword');
+      if(id==='aliexpress') {
+        kw.placeholder='粘贴速卖通商品链接或商品 ID（逗号分隔多个）';
+        kw.value='';
+      } else {
+        kw.placeholder='输入搜索关键词...';
+        onCrawlBrandChange();
+      }
     }
     function onCrawlBrandChange() {
       const name=document.getElementById('crawlBrand').value;
+      if(document.getElementById('crawlPlatform').value==='aliexpress') return;
       if(!name) { document.getElementById('crawlKeyword').value=''; return; }
       const b=crawlBrandsData.find(x=>x.name===name);
       if(b) document.getElementById('crawlKeyword').value=b.search_keyword;
     }
+    async function pollJob(jobId, onUpdate, timeoutMs=30*60*1000) {
+      const started=Date.now();
+      while(Date.now()-started < timeoutMs) {
+        const r=await fetch(`${API}/api/jobs/${encodeURIComponent(jobId)}`);
+        if(!r.ok) throw new Error(`任务查询失败 (${r.status})`);
+        const job=await r.json();
+        if(onUpdate) onUpdate(job);
+        if(['succeeded','empty','failed','cancelled'].includes(job.status)) return job;
+        await new Promise(resolve=>setTimeout(resolve, 800));
+      }
+      throw new Error('任务等待超时，请稍后在任务记录中查看');
+    }
+
+    function renderJobStatus(job, statusId='crawlStatus') {
+      const el=document.getElementById(statusId); if(!el||!job)return;
+      const total=job.progress_total||0, current=job.progress_current||0;
+      const pct=total?Math.round(current/total*100):0;
+      el.textContent=`${job.message||job.status}${total?' '+pct+'%':''}`;
+      // 更新进度条
+      const bar=document.getElementById('crawlProgressBar');
+      const prog=document.getElementById('crawlProgress');
+      if(bar&&prog) {
+        if(total>0) { prog.style.display='block'; bar.style.width=pct+'%'; }
+        else { prog.style.display='none'; }
+      }
+    }
+
+    let currentCrawlJobId=null;
+    async function cancelCrawlJob() {
+      if(!currentCrawlJobId) return;
+      try {
+        await fetch(`${API}/api/jobs/${encodeURIComponent(currentCrawlJobId)}/cancel`,{method:'POST'});
+        showToast('正在取消任务...','info');
+      } catch(e) { showToast('取消失败','error'); }
+    }
+
     async function triggerCrawl() {
       const btn=document.getElementById('btnCrawl');
       const platform=document.getElementById('crawlPlatform').value;
@@ -437,11 +835,18 @@
       const maxVideos=document.getElementById('crawlMaxVideos').value||5;
       if(!keyword) { showToast('请输入搜索关键词','error'); return; }
 
+      // 平台配置预检
+      const p=platformsData.find(x=>x.id===platform);
+      if(p&&p.config_status===false) {
+        if(!confirm(`${p.name} 尚未配置：${p.config_hint}\n\n未配置时抓取可能失败或返回空结果。是否继续？`)) return;
+      }
+
       btn.disabled=true;
       btn.innerHTML='<span class="spinner"></span> 抓取中...';
       document.getElementById('crawlStatus').textContent=`正在抓取 [${platform}] ${brand||'全部品牌'}...`;
       document.getElementById('crawlResults').innerHTML='<div style="text-align:center;padding:2rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">正在抓取数据，请耐心等待（可能需要1-5分钟）...</p></div>';
 
+      let renderedJobResult=false;
       try {
         const params=new URLSearchParams();
         if(brand) params.set('brand_name',brand);
@@ -450,43 +855,98 @@
         params.set('platform',platform);
         const r=await fetch(`${API}/api/crawl?${params}`,{method:'POST'});
         const d=await r.json();
-        if(d.error) {
-          document.getElementById('crawlResults').innerHTML=`<div class="empty"><p style="color:var(--danger);">${d.error}</p></div>`;
-        } else {
-          renderCrawlResults(d.results);
+        if(!d.job_id) throw new Error(d.detail||'未创建抓取任务');
+        currentCrawlJobId=d.job_id;
+        document.getElementById('btnCancelCrawl').style.display='inline-flex';
+        document.getElementById('crawlProgress').style.display='block';
+        const job=await pollJob(d.job_id, j=>{renderJobStatus(j); loadJobHistory();});
+        if(job.result&&job.result.results) { renderCrawlResults(job.result.results); renderedJobResult=true; }
+        if(job.status==='failed') throw new Error(job.error||'抓取失败');
+        if(job.status==='cancelled') showToast('抓取已取消','success');
+        else if(job.status==='empty') showToast('抓取完成，但没有找到匹配内容','info');
+        else showToast('抓取完成！','success');
+        await loadStats(); await loadBrands();
+
+        // 抓取成功且有新评论时，自动提示进行 AI 分析
+        if(job.status==='succeeded' && job.result&&job.result.results) {
+          const totalNew=(job.result.results||[]).reduce((s,r)=>s+(r.new_comments||0),0);
+          if(totalNew>0) { renderAnalyzePrompt(totalNew); }
         }
-        document.getElementById('crawlStatus').textContent='抓取完成';
-        showToast('抓取完成！','success');
-        await loadStats();
       } catch(e) {
-        document.getElementById('crawlResults').innerHTML=`<div class="empty"><p style="color:var(--danger);">抓取失败: ${e.message}</p></div>`;
+        if(!renderedJobResult) document.getElementById('crawlResults').innerHTML=`<div class="empty"><p style="color:var(--danger);">抓取失败: ${e.message}</p></div>`;
         document.getElementById('crawlStatus').textContent='抓取失败';
         showToast('抓取失败: '+e.message,'error');
       } finally {
         btn.disabled=false;
         btn.innerHTML='开始抓取';
+        currentCrawlJobId=null;
+        document.getElementById('btnCancelCrawl').style.display='none';
+        document.getElementById('crawlProgress').style.display='none';
+        document.getElementById('crawlProgressBar').style.width='0%';
+        await loadJobHistory();
       }
     }
-    function renderCrawlResults(results) {
+     function renderCrawlResults(results) {
       const c=document.getElementById('crawlResults');
       const count=document.getElementById('crawlResultCount');
       if(!results||!results.length) { c.innerHTML='<div class="empty"><p>无结果</p></div>'; count.textContent=''; return; }
       count.textContent=`${results.length} 个品牌`;
       c.innerHTML=results.map(r=>{
-        if(r.error) return `<div class="comment-item" style="border-left-color:var(--danger);"><div class="meta"><span class="brand-name">${r.brand||'-'}</span></div><div class="text" style="color:var(--danger);">${r.error}</div></div>`;
+        if(r.error) return `<div class="comment-item" style="border-left-color:var(--danger);"><div class="meta"><span class="brand-name">${escapeHtml(r.brand||'-')}</span></div><div class="text" style="color:var(--danger);">${escapeHtml(r.error)}</div></div>`;
+        const errors=(r.errors||[]).map(e=>`<div style="color:var(--danger);font-size:0.75rem;">${escapeHtml(e.stage||'')} ${escapeHtml(e.video_id||'')}: ${escapeHtml(e.error||'')}</div>`).join('');
         return `<div class="comment-item analyzed" style="margin-bottom:0.6rem;">
           <div class="meta">
-            <span class="brand-name">${r.brand||'-'}</span>
-            <span style="color:var(--accent);">${r.platform||'-'}</span>
+            <span class="brand-name">${escapeHtml(r.brand||'-')}</span>
+            <span style="color:var(--accent);">${escapeHtml(r.platform||'-')}</span>
             <span>视频/帖子: ${r.videos_found||0}</span>
             <span>评论: ${r.comments_extracted||0}</span>
-            <span style="color:var(--accent3);">新增: ${r.new_comments||0}</span>
-          </div>
-        </div>`;
+           <span style="color:var(--accent3);">新增: ${r.new_comments||0}</span>
+           </div>
+           ${errors}
+         </div>`;
       }).join('');
     }
 
-    async function init() { initTheme(); await loadBrands(); await loadStats(); await loadPainPoints(); }
+    function renderAnalyzePrompt(newCount) {
+      const c=document.getElementById('crawlResults');
+      const banner=document.createElement('div');
+      banner.style.cssText='margin-top:1rem;padding:1rem;border:1px solid var(--accent);border-radius:8px;background:var(--hover-bg);display:flex;align-items:center;justify-content:space-between;gap:1rem;';
+      banner.innerHTML=`
+        <div>
+          <div style="color:var(--accent);font-weight:600;">抓取完成，新增 ${newCount} 条评论</div>
+          <div style="color:var(--muted);font-size:0.8rem;margin-top:0.2rem;">点击"开始分析"让 AI 自动提取痛点标签和严重度</div>
+        </div>
+        <button class="btn analyze" id="btnAutoAnalyze" onclick="triggerAnalyzeFromCrawl()">开始分析</button>
+      `;
+      c.appendChild(banner);
+    }
+
+    async function triggerAnalyzeFromCrawl() {
+      const btn=document.getElementById('btnAutoAnalyze');
+      if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 分析中...';}
+      try {
+        const r=await fetch(`${API}/api/analyze?limit=500`,{method:'POST'});
+        const d=await r.json();
+        if(!d.job_id) throw new Error(d.detail||'未创建分析任务');
+        showToast('AI 分析已启动，请勿关闭窗口...','info');
+        document.getElementById('crawlStatus').textContent='正在 AI 分析...';
+        const job=await pollJob(d.job_id, j=>{renderJobStatus(j,'crawlStatus');});
+        if(job.status==='succeeded') {
+          const r=job.result||{};
+          showToast(`分析完成！成功 ${r.success||0} 条，失败 ${r.failed||0} 条`,'success');
+        } else if(job.status==='failed') {
+          showToast('分析失败: '+(job.error||''),'error');
+        }
+        await loadStats();
+      } catch(e) {
+        showToast('分析启动失败: '+e.message,'error');
+      } finally {
+        if(btn){btn.disabled=false;btn.innerHTML='开始分析';}
+        document.getElementById('crawlStatus').textContent='';
+      }
+    }
+
+    async function init() { initTheme(); await loadBrands(); await loadStats(); await loadPainPoints(); await loadJobHistory(); }
 
     async function loadBrands() {
       try { const res=await fetch(`${API}/api/brands`); const brands=await res.json();
@@ -508,6 +968,109 @@
         const t=document.getElementById('topTags');
         if(s.top_tags&&s.top_tags.length>0){t.innerHTML=s.top_tags.map(x=>`<span class="top-tag">${x[0]} <span class="count">${x[1]}</span></span>`).join('');}else{t.innerHTML='<span style="color:var(--muted);font-size:0.85rem;">暂无数据</span>';}
       } catch(e){}
+    }
+
+    function jobLabel(kind) { return kind==='crawl' ? '抓取' : kind==='analyze' ? '分析' : kind==='cluster' ? '聚类' : kind==='report' ? '报告' : kind; }
+    function jobStatusLabel(status) { return ({queued:'排队中',running:'运行中',succeeded:'已完成',empty:'无匹配结果',failed:'失败',cancelled:'已取消'})[status]||status; }
+    async function loadJobHistory() {
+      const el=document.getElementById('jobHistory'); if(!el)return;
+      try {
+        const r=await fetch(`${API}/api/jobs?limit=20`); const jobs=await r.json();
+        if(!jobs.length){el.innerHTML='<span style="color:var(--muted);">暂无任务</span>';return;}
+        el.innerHTML=jobs.map(j=>{
+          const total=j.progress_total||0, cur=j.progress_current||0;
+          const pct=total?` ${Math.round(cur/total*100)}%`:'';
+          const can=['queued','running'].includes(j.status)?`<button class="btn sm" onclick="cancelJob('${j.id}')">取消</button>`:'';
+          const detail=j.error?` · ${j.error}`:'';
+          return `<div class="job-row"><span class="job-kind">${escapeHtml(jobLabel(j.kind))}</span><span class="job-status ${escapeHtml(j.status)}">${escapeHtml(jobStatusLabel(j.status))}${pct}</span><span class="job-message" title="${escapeHtml((j.message||'')+detail)}">${escapeHtml(j.message||'')}${escapeHtml(detail)}</span><span style="color:var(--muted);font-size:0.72rem;">${escapeHtml(j.created_at||'')}</span>${can}</div>`;
+        }).join('');
+      } catch(e){ el.innerHTML='<span style="color:var(--danger);">任务历史加载失败</span>'; }
+    }
+    async function cancelJob(jobId) {
+      try { const r=await fetch(`${API}/api/jobs/${encodeURIComponent(jobId)}/cancel`,{method:'POST'}); const d=await r.json(); if(!r.ok)throw new Error(d.detail||'取消失败'); showToast('已请求取消任务','success'); await loadJobHistory(); }
+      catch(e){ showToast(e.message,'error'); }
+    }
+
+    // === 痛点聚类页 ===
+    let clusterDataCache=null;
+    async function loadClusters() {
+      try {
+        const r=await fetch(`${API}/api/clusters`); clusterDataCache=await r.json(); renderClusters(clusterDataCache);
+      } catch(e){ showToast('聚类数据加载失败: '+e.message,'error'); }
+    }
+    function renderClusters(d) {
+      document.getElementById('clusterVersionInfo').textContent=d.model_version?('版本 '+d.model_version):'尚未运行聚类';
+      document.getElementById('statClusterTopics').textContent=d.clusters?d.clusters.length:0;
+      document.getElementById('statClusteredComments').textContent=d.clustered_comments||0;
+      document.getElementById('statPendingCluster').textContent=d.pending_comments||0;
+      const wrap=document.getElementById('clusterList');
+      if(!d.clusters||!d.clusters.length){wrap.innerHTML='<div class="chart-card"><div class="chart-body" style="display:flex;align-items:center;justify-content:center;color:var(--muted);min-height:180px;text-align:center;line-height:1.8;">尚无聚类结果<br>点击「全量聚类」：对全部高质量评论做多语言语义聚类（BGE-M3 + HDBSCAN），<br>并由 AI 归纳每簇的痛点主题名。</div></div>';return;}
+      wrap.innerHTML='<div class="cluster-grid">'+d.clusters.map(c=>{
+        const sev=c.avg_severity; const sevBadge=sev?`<span class="badge sev-${sev>=2.5?3:sev>=1.5?2:1}">严重度 ${sev}</span>`:'<span class="badge sev-1">严重度 —</span>';
+        const sent=c.avg_sentiment?`<span>情感 ${c.avg_sentiment}/5</span>`:'';
+        const kw=(c.keywords||[]).slice(0,6).map(k=>`<span>${escapeHtml(k)}</span>`).join('');
+        return `<div class="cluster-card" onclick="viewClusterComments('${c.id}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.6rem;">
+            <div style="min-width:0;"><div class="cc-name">${escapeHtml(c.topic_name||'未命名主题')}</div><div class="cc-slug">${escapeHtml(c.topic_name_en||'')}</div></div>
+            <div class="cc-count"><strong>${c.comment_count||0}</strong><span>条评论</span></div>
+          </div>
+          ${c.description?`<div class="cc-desc">${escapeHtml(c.description)}</div>`:''}
+          ${kw?`<div class="cc-kw">${kw}</div>`:''}
+          <div class="cc-meta">${sevBadge}${sent}<span style="margin-left:auto;">查看簇内评论 →</span></div>
+        </div>`;
+      }).join('')+'</div>';
+    }
+    async function runClusterJob(mode,btn) {
+      const params={mode};
+      if(mode==='full')params.min_cluster_size=parseInt(document.getElementById('clusterMinSize').value)||10;
+      if(mode==='incremental')params.assign_threshold=parseFloat(document.getElementById('clusterThreshold').value)||0.5;
+      const orig=btn.innerHTML; btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 运行中...';
+      const hint=document.getElementById('clusterJobHint');
+      try{
+        const r=await fetch(`${API}/api/cluster/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+        const d=await r.json();
+        if(!d.job_id)throw new Error(d.detail||'任务创建失败');
+        if(d.deduplicated)showToast('已有聚类任务在运行，等待其完成','info');
+        const job=await pollJob(d.job_id,j=>{hint.textContent=j.message||'运行中...';});
+        if(job.status==='failed')throw new Error(job.error||job.message||'聚类失败');
+        if(job.status==='empty')showToast(job.message||'无可聚类内容','info');
+        else showToast(job.message||'聚类完成','success');
+        await loadClusters();
+      }catch(e){ showToast('失败: '+e.message,'error'); }
+      finally{ btn.disabled=false; btn.innerHTML=orig; hint.textContent=''; }
+    }
+    async function runFullClustering() {
+      if(!confirm('全量聚类将重新计算全部评论的簇归属（embedding 有缓存，通常几分钟内完成）。继续？'))return;
+      return runClusterJob('full',document.getElementById('btnFullCluster'));
+    }
+    async function runIncrementalClustering() { return runClusterJob('incremental',document.getElementById('btnIncrCluster')); }
+    async function renameClusters() { return runClusterJob('rename',document.getElementById('btnRenameClusters')); }
+    async function viewClusterComments(id) {
+      const c=(clusterDataCache&&clusterDataCache.clusters||[]).find(x=>x.id===id);
+      document.getElementById('modalTitle').textContent=c?`主题：${c.topic_name}（${c.comment_count}条）`:'簇内评论';
+      const box=document.getElementById('modalContent');
+      box.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem 0;">加载中...</p>';
+      document.getElementById('modal').classList.add('show');
+      try{
+        const r=await fetch(`${API}/api/clusters/${encodeURIComponent(id)}/comments?limit=50`);
+        const list=await r.json();
+        if(!list.length){box.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem 0;">该簇暂无评论</p>';return;}
+        box.innerHTML=list.map(m=>{
+          const sev=m.severity?`<span class="badge sev-${m.severity}">严重度 ${m.severity}</span>`:'';
+          let pt=m.pain_tags; if(typeof pt==='string'){try{pt=JSON.parse(pt)}catch(e){pt=[]}}
+          const tags=(pt||[]).slice(0,5).map(t=>`<span>${escapeHtml(t)}</span>`).join('');
+          return `<div class="cc-cluster-comment">
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;font-size:0.72rem;color:var(--muted);">
+              <span>[${escapeHtml(m.platform||'')}${m.brand_name?'/'+escapeHtml(m.brand_name):''}]</span>${sev}
+              ${m.like_count?`<span>👍 ${m.like_count}</span>`:''}
+              ${m.sentiment_score?`<span>情感 ${m.sentiment_score}/5</span>`:''}
+            </div>
+            <div style="font-size:0.85rem;color:var(--ink);margin:0.35rem 0;line-height:1.55;">${escapeHtml(m.content_clean||'')}</div>
+            ${m.summary_zh?`<div style="font-size:0.75rem;color:var(--muted);">摘要：${escapeHtml(m.summary_zh)}</div>`:''}
+            ${tags?`<div class="cc-kw">${tags}</div>`:''}
+          </div>`;
+        }).join('');
+      }catch(e){ box.innerHTML='<p style="color:var(--danger);">加载失败: '+escapeHtml(e.message)+'</p>'; }
     }
 
     async function loadPainPoints() {
@@ -578,51 +1141,75 @@
       const total=painDataCache.length, shown=data.length;
       c.textContent=total>shown?`${shown} / ${total} 条（已筛选）`:`${shown} 条`;
       body.innerHTML=data.map(item=>{
-        const tags=item.pain_tags?JSON.parse(item.pain_tags).map(t=>`<span class="tag">${t}</span>`).join(''):'';
+        const tags=item.pain_tags?JSON.parse(item.pain_tags).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(''):'';
         const cp=(item.content_clean||item.content||'').substring(0,80);
-        const mh=item.product_match?`<span class="model-name">${item.product_match}</span>`:'<span style="color:var(--muted)">—</span>';
-        return `<tr onclick='showDetail(${JSON.stringify(item).replace(/"/g,'&quot;')})'>
-          <td class="brand-name">${item.brand_name||'—'}</td><td>${mh}</td>
+        const mh=item.product_match?`<span class="model-name">${escapeHtml(item.product_match)}</span>`:'<span style="color:var(--muted)">—</span>';
+        return `<tr data-detail='${escapeHtml(JSON.stringify(item))}'>
+          <td class="brand-name">${escapeHtml(item.brand_name||'—')}</td><td>${mh}</td>
           <td><span class="badge sev-${item.severity}">${item.severity}</span></td>
           <td><span class="sentiment s${item.sentiment_score}">${item.sentiment_score}/5</span></td>
-          <td>${tags}</td><td class="summary">${item.summary_zh||'—'}</td>
-          <td class="comment-text">${cp}...</td><td style="font-size:0.8rem;color:var(--accent3)">${item.user_solution||'—'}</td></tr>`;
+          <td>${tags}</td><td class="summary">${escapeHtml(item.summary_zh||'—')}</td>
+          <td class="comment-text">${escapeHtml(cp)}...</td><td style="font-size:0.8rem;color:var(--accent3)">${escapeHtml(item.user_solution||'—')}</td></tr>`;
       }).join('');
+      body.querySelectorAll('tr[data-detail]').forEach(row=>row.addEventListener('click',()=>showDetail(JSON.parse(row.dataset.detail))));
     }
 
-    function buildSourceLink(item) { const v=item.yt_video_id,c=item.original_id; if(!v||!c)return''; return `<div class="field"><div class="field-label">来源链接</div><div class="field-value"><a href="https://www.youtube.com/watch?v=${v}&lc=${c}" target="_blank" style="color:var(--accent);text-decoration:underline;">🔗 查看原始评论</a></div></div>`; }
+    function buildSourceLink(item) { const raw=item.comment_source_url||item.source_url||item.video_source_url; if(!raw)return''; let url=''; try{const parsed=new URL(raw,window.location.origin); if(!['http:','https:'].includes(parsed.protocol))return''; url=parsed.href;}catch(e){return'';} return `<div class="field"><div class="field-label">来源链接</div><div class="field-value"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;">🔗 查看原始内容</a></div></div>`; }
+
+    function escapeHtml(value) { return String(value??'').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 
     function showDetail(item) {
       const m=document.getElementById('modal'),c=document.getElementById('modalContent');
-      const tags=item.pain_tags?JSON.parse(item.pain_tags).join(', '):'—', cats=item.pain_categories?JSON.parse(item.pain_categories).join(', '):'—';
-      c.innerHTML=`<div class="field"><div class="field-label">品牌</div><div class="field-value">${item.brand_name||'—'}</div></div>
-        <div class="field"><div class="field-label">型号</div><div class="field-value">${item.product_match||'未识别'}</div></div>
+       const tags=item.pain_tags?JSON.parse(item.pain_tags).map(escapeHtml).join(', '):'—', cats=item.pain_categories?JSON.parse(item.pain_categories).map(escapeHtml).join(', '):'—';
+      c.innerHTML=`<div class="field"><div class="field-label">品牌</div><div class="field-value">${escapeHtml(item.brand_name||'—')}</div></div>
+        <div class="field"><div class="field-label">型号</div><div class="field-value">${escapeHtml(item.product_match||'未识别')}</div></div>
         <div class="field"><div class="field-label">严重度</div><div class="field-value"><span class="badge sev-${item.severity}">${item.severity}</span></div></div>
         <div class="field"><div class="field-label">情感</div><div class="field-value">${item.sentiment_score}/5</div></div>
         <div class="field"><div class="field-label">分类</div><div class="field-value">${cats}</div></div>
         <div class="field"><div class="field-label">标签</div><div class="field-value">${tags}</div></div>
-        <div class="field"><div class="field-label">摘要</div><div class="field-value" style="color:var(--accent3)">${item.summary_zh}</div></div>
-        <div class="field"><div class="field-label">原文 (${item.language||'?'})</div><div class="field-value" style="white-space:pre-wrap;word-break:break-word;">${item.content_clean||item.content}</div></div>
-        <div class="field"><div class="field-label">用户方案</div><div class="field-value">${item.user_solution||'无'}</div></div>
+        <div class="field"><div class="field-label">摘要</div><div class="field-value" style="color:var(--accent3)">${escapeHtml(item.summary_zh||'')}</div></div>
+        <div class="field"><div class="field-label">中文翻译</div><div class="field-value" style="white-space:pre-wrap;word-break:break-word;">${escapeHtml(item.translation_zh||'')}</div></div>
+        <div class="field"><div class="field-label">原文 (${escapeHtml(item.language||'?')})</div><div class="field-value" style="white-space:pre-wrap;word-break:break-word;">${escapeHtml(item.content_clean||item.content||'')}</div></div>
+        <div class="field"><div class="field-label">用户方案</div><div class="field-value">${escapeHtml(item.user_solution||'无')}</div></div>
         ${buildSourceLink(item)}
-        <div class="field"><div class="field-label">模型/时间</div><div class="field-value">${item.llm_model} / ${item.analyzed_at}</div></div>`;
+        <div class="field"><div class="field-label">置信度 / 模型 / 时间</div><div class="field-value">${item.confidence==null?'—':Math.round(item.confidence*100)+'%'} / ${escapeHtml(item.llm_model||'')} / ${escapeHtml(item.analyzed_at||'')}</div></div>`;
       m.classList.add('show');
     }
     function closeModal(id){document.getElementById(id).classList.remove('show');}
 
     async function openCommentsBrowser() { document.getElementById('commentsModal').classList.add('show'); const c=document.getElementById('commentsBrowserContent'); c.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">加载中...</p>'; try{const r=await fetch(`${API}/api/comments/grouped`);const g=await r.json();renderCommentsBrowser(g);}catch(e){c.innerHTML=`<p style="color:var(--danger);">加载失败</p>`;} }
     function renderCommentsBrowser(groups) { const c=document.getElementById('commentsBrowserContent'); if(!groups||!groups.length){c.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">暂无数据</p>';return;}
-      c.innerHTML=groups.map((g,idx)=>{const ch=g.comments.map(co=>{const t=(co.content_clean||co.content||'').substring(0,150);return `<div class="comment-item ${co.analyzed?'analyzed':''}"><div class="meta"><span>${co.analyzed?'<span style="color:var(--accent3)">已分析</span>':'<span style="color:var(--warn)">待分析</span>'}</span><span>👍 ${co.like_count||0}</span><span>${co.language||''}</span></div><div class="text">${t}...</div></div>`;}).join('');const pct=g.comment_count>0?Math.round(g.analyzed_count/g.comment_count*100):0;return `<div class="brand-group"><div class="brand-group-header ${idx===0?'open':''}" onclick="toggleBrandGroup(${idx})"><span class="toggle">▶</span><span class="bname">${g.brand_name}</span><span class="bcount">${g.comment_count}条 / 已分析${g.analyzed_count}条 (${pct}%)</span></div><div class="brand-group-body ${idx===0?'show':''}" id="brandGroup${idx}">${ch||'<p style="color:var(--muted);padding:0.5rem;">暂无</p>'}</div></div>`;}).join(''); }
+      c.innerHTML=groups.map((g,idx)=>{const ch=g.comments.map(co=>{const t=(co.content_clean||co.content||'').substring(0,150);return `<div class="comment-item ${co.analyzed?'analyzed':''}"><div class="meta"><span>${co.analyzed?'<span style="color:var(--accent3)">已分析</span>':'<span style="color:var(--warn)">待分析</span>'}</span><span>👍 ${co.like_count||0}</span><span>${escapeHtml(co.language||'')}</span></div><div class="text">${escapeHtml(t)}...</div></div>`;}).join('');const pct=g.comment_count>0?Math.round(g.analyzed_count/g.comment_count*100):0;return `<div class="brand-group"><div class="brand-group-header ${idx===0?'open':''}" onclick="toggleBrandGroup(${idx})"><span class="toggle">▶</span><span class="bname">${escapeHtml(g.brand_name)}</span><span class="bcount">${g.comment_count}条 / 已分析${g.analyzed_count}条 (${pct}%)</span></div><div class="brand-group-body ${idx===0?'show':''}" id="brandGroup${idx}">${ch||'<p style="color:var(--muted);padding:0.5rem;">暂无</p>'}</div></div>`;}).join(''); }
     function toggleBrandGroup(idx){document.querySelectorAll('.brand-group-header')[idx].classList.toggle('open');document.getElementById('brandGroup'+idx).classList.toggle('show');}
 
     async function openAnalysesBrowser() { document.getElementById('analysesModal').classList.add('show'); await loadAnalysesBrowser(); }
     async function loadAnalysesBrowser() { const c=document.getElementById('analysesBrowserContent'),b=document.getElementById('analysisFilterBrand').value,s=document.getElementById('analysisFilterSeverity').value; c.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">加载中...</p>'; try{const p=new URLSearchParams();if(b)p.set('brand',b);p.set('min_severity',s);p.set('limit','300');const r=await fetch(`${API}/api/analyses?${p}`);const d=await r.json();document.getElementById('analysisCount').textContent=`${d.length} 条`;renderAnalysesBrowser(d);}catch(e){c.innerHTML=`<p style="color:var(--danger);">加载失败</p>`;} }
     function renderAnalysesBrowser(data) { const c=document.getElementById('analysesBrowserContent'); if(!data||!data.length){c.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">暂无数据</p>';return;}
-      c.innerHTML=data.map(item=>{const tags=item.pain_tags?JSON.parse(item.pain_tags).map(t=>`<span class="tag">${t}</span>`).join(''):'';const t=(item.content_clean||item.content||'').substring(0,200);return `<div class="comment-item analyzed" style="margin-bottom:0.6rem;"><div class="meta"><span class="brand-name">${item.brand_name||'—'}</span>${item.product_match?`<span class="model-name">${item.product_match}</span>`:''}<span class="badge sev-${item.severity}">sev${item.severity}</span><span>${item.sentiment_score}/5</span></div><div class="text" style="margin-bottom:0.4rem;">${t}...</div><div class="analysis-box"><div><strong style="color:var(--accent3)">摘要:</strong> ${item.summary_zh||'—'}</div><div><strong style="color:var(--accent)">标签:</strong> ${tags||'—'}</div>${item.user_solution?`<div><strong style="color:var(--accent3)">方案:</strong> ${item.user_solution}</div>`:''}${buildSourceLink(item)}<div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem;">${item.llm_model} | ${item.analyzed_at}</div></div></div>`;}).join(''); }
+      c.innerHTML=data.map((item,idx)=>{const tags=item.pain_tags?JSON.parse(item.pain_tags).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(''):'';const t=(item.content_clean||item.content||'').substring(0,200);return `<div class="comment-item analyzed" style="margin-bottom:0.6rem;"><div class="meta"><span class="brand-name">${escapeHtml(item.brand_name||'-')}</span>${item.product_match?`<span class="model-name">${escapeHtml(item.product_match)}</span>`:''}<span class="badge sev-${item.severity}">sev${item.severity}</span><span>${item.sentiment_score}/5</span><button class="btn sm edit-analysis-btn" data-index="${idx}" style="margin-left:auto;">人工修正</button></div><div class="text" style="margin-bottom:0.4rem;">${escapeHtml(t)}...</div><div class="analysis-box"><div><strong style="color:var(--accent3)">摘要:</strong> ${escapeHtml(item.summary_zh||'-')}</div><div><strong style="color:var(--accent)">标签:</strong> ${tags||'-'}</div>${item.user_solution?`<div><strong style="color:var(--accent3)">方案:</strong> ${escapeHtml(item.user_solution)}</div>`:''}${buildSourceLink(item)}<div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem;">${escapeHtml(item.llm_model||'')} | ${escapeHtml(item.analyzed_at||'')}</div></div></div>`;}).join(''); c.querySelectorAll('.edit-analysis-btn').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();openAnalysisEdit(data[Number(btn.dataset.index)])})); }
+
+    function openAnalysisEdit(item) {
+      document.getElementById('editCommentId').value=item.id||'';
+      document.getElementById('editSentiment').value=item.sentiment_score||3;
+      document.getElementById('editSeverity').value=item.severity||1;
+      let cats=[],tags=[]; try{cats=item.pain_categories?JSON.parse(item.pain_categories):[];}catch(e){} try{tags=item.pain_tags?JSON.parse(item.pain_tags):[];}catch(e){}
+      document.getElementById('editCategories').value=cats.join(', '); document.getElementById('editTags').value=tags.join(', ');
+      document.getElementById('editProductMatch').value=item.product_match||''; document.getElementById('editConfidence').value=item.confidence==null?1:item.confidence;
+      document.getElementById('editSummary').value=item.summary_zh||''; document.getElementById('editTranslation').value=item.translation_zh||''; document.getElementById('editSolution').value=item.user_solution||'';
+      document.getElementById('analysisEditModal').classList.add('show');
+    }
+    async function saveAnalysisEdit(event) {
+      event.preventDefault(); const id=document.getElementById('editCommentId').value; const btn=document.getElementById('btnSaveAnalysis'); btn.disabled=true;
+      const csv=id=>id.split(',').map(x=>x.trim()).filter(Boolean);
+      const body={sentiment_score:Number(document.getElementById('editSentiment').value),severity:Number(document.getElementById('editSeverity').value),pain_categories:csv(document.getElementById('editCategories').value),pain_tags:csv(document.getElementById('editTags').value),product_match:document.getElementById('editProductMatch').value||null,confidence:Number(document.getElementById('editConfidence').value),summary_zh:document.getElementById('editSummary').value,translation_zh:document.getElementById('editTranslation').value,user_solution:document.getElementById('editSolution').value||null};
+      try{const r=await fetch(`${API}/api/analyses/${encodeURIComponent(id)}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.detail||'保存失败');closeModal('analysisEditModal');showToast('人工修正已保存','success');await loadAnalysesBrowser();await loadPainPoints();}catch(e){showToast(e.message,'error');}finally{btn.disabled=false;}
+    }
 
     function scrollToPainPoints(){document.getElementById('painPointsSection').scrollIntoView({behavior:'smooth'});}
 
-    async function triggerAnalyze() { const btn=document.getElementById('btnAnalyze'),batch=document.getElementById('analyzeBatch').value,brand=document.getElementById('filterBrand').value; btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 分析中...'; showToast(`开始分析(${brand||'全部'}, ${batch}条)...`); try{let u=`${API}/api/analyze?limit=${batch}`;if(brand)u+=`&brand=${encodeURIComponent(brand)}`;const r=await fetch(u,{method:'POST'});const d=await r.json();if(d.error)showToast(d.error,'error');else if(d.total===0)showToast('没有待分析评论','info');else showToast(`完成! 共${d.total}条, 成功${d.success}条`,'success');await loadStats();await loadPainPoints();}catch(e){showToast('失败:'+e.message,'error');}finally{btn.disabled=false;btn.innerHTML='AI 分析';} }
+    async function triggerAnalyze() { const btn=document.getElementById('btnAnalyze'),batch=document.getElementById('analyzeBatch').value,brand=document.getElementById('filterBrand').value; btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 分析中...'; showToast(`开始分析(${brand||'全部'}, ${batch}条)...`); try{let u=`${API}/api/analyze?limit=${batch}`;if(brand)u+=`&brand=${encodeURIComponent(brand)}`;const r=await fetch(u,{method:'POST'});const d=await r.json();if(!d.job_id)throw new Error(d.detail||'未创建分析任务');const job=await pollJob(d.job_id,j=>{btn.innerHTML=`<span class="spinner"></span> ${j.message||'分析中...'}`;loadJobHistory();});if(job.status==='failed')throw new Error(job.error||'分析失败');const result=job.result||{};if(result.total===0)showToast('没有待分析评论','info');else showToast(`完成! 共${result.total}条, 成功${result.success||0}条`,'success');await loadStats();await loadPainPoints();await loadAnalysisProgressCard();}catch(e){showToast('失败:'+e.message,'error');}finally{btn.disabled=false;btn.innerHTML='AI 分析';await loadJobHistory();} }
+    async function loadAnalysisProgressCard() { try{const r=await fetch(`${API}/api/insights/analysis-progress`);const d=await r.json();const bar=document.getElementById('progressBar'),stats=document.getElementById('progressStats'),hint=document.getElementById('progressHint');if(!d)return; bar.style.width=Math.min(d.coverage,100)+'%'; bar.textContent=d.coverage+'%'; stats.innerHTML=`已分析 <strong style="color:var(--accent);">${d.analyzed}</strong> / ${d.total} · 待分析 <strong style="color:var(--warn);">${d.unanalyzed}</strong>${d.old_analyses>0?` · 需升级 <strong style="color:var(--danger);">${d.old_analyses}</strong>`:''}`; const remaining=d.unanalyzed; if(remaining>0){hint.textContent=`预估费用 ¥${(remaining*0.005).toFixed(1)}–${(remaining*0.01).toFixed(1)} · 耗时约 ${(remaining*3/60).toFixed(0)} 分钟`;}else{hint.textContent='全部评论已分析 ✓';} }catch(e){} }
+    async function continueAnalyzeAll() { const btn=document.getElementById('btnContinueAnalyze');const batch=document.getElementById('analyzeBatch2').value; btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 分析中...'; showToast(`开始分析(${batch}条)...`); try{const r=await fetch(`${API}/api/analyze?limit=${batch}`,{method:'POST'});const d=await r.json();if(!d.job_id&&d.status!=='skipped')throw new Error(d.detail||'未创建分析任务');if(d.status==='skipped'){showToast('没有待分析的评论','info');return;} const job=await pollJob(d.job_id,j=>{btn.innerHTML=`<span class="spinner"></span> ${j.message||'分析中...'}`;loadAnalysisProgressCard();loadJobHistory();});if(job.status==='failed')throw new Error(job.error||'分析失败');const result=job.result||{};showToast(`完成! 共${result.total}条, 成功${result.success||0}条`,'success');await loadAnalysisProgressCard();await loadStats();await loadPainPoints();}catch(e){showToast('失败:'+e.message,'error');}finally{btn.disabled=false;btn.innerHTML='继续分析全部未分析';} }
+    async function reanalyzeAll() { if(!confirm('重新分析将删除现有 '+document.getElementById('progressStats')?.textContent+' 的分析记录，用新版 Prompt 重新跑。确认？'))return; const btn=document.getElementById('btnReanalyze');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 重置并分析中...'; showToast('正在重置旧分析并启动新版 Prompt 分析...'); try{const r=await fetch(`${API}/api/analyze/reanalyze`,{method:'POST'});const d=await r.json();if(d.status==='skipped'){showToast('没有需要重新分析的评论','info');return;}if(!d.job_id)throw new Error(d.detail||'未创建分析任务');showToast(`已重置 ${d.reset_count} 条，开始重新分析...`,'success'); const job=await pollJob(d.job_id,j=>{btn.innerHTML=`<span class="spinner"></span> ${j.message||'分析中...'}`;loadAnalysisProgressCard();loadJobHistory();});if(job.status==='failed')throw new Error(job.error||'分析失败');const result=job.result||{};showToast(`重新分析完成! 共${result.total}条, 成功${result.success||0}条`,'success');await loadAnalysisProgressCard();await loadStats();await loadPainPoints();}catch(e){showToast('失败:'+e.message,'error');}finally{btn.disabled=false;btn.innerHTML='重新分析（升级新版 Prompt）';} }
 
     function showToast(msg,type='info'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>{t.className='toast';},type==='error'?10000:5000);}
 
@@ -631,7 +1218,7 @@
     function getChartTheme() { const t=document.documentElement.getAttribute('data-theme'); return {textColor: t==='dark'?'#8a9bb4':'#64748b', gridColor: t==='dark'?'#2a3a52':'#e2e8f0'}; }
 
     async function loadInsights() {
-      await Promise.all([loadTagDist(), loadSeverity(), loadSentiment(), loadPriority(), loadHeatmap(), loadModelRank()]);
+      await Promise.all([loadTagDist(), loadSeverity(), loadSentiment(), loadPriority(), loadHeatmap(), loadModelRank(), loadAnalysisProgressCard()]);
     }
     async function loadTagDist() { try{const r=await fetch(`${API}/api/insights/tag-distribution`);const d=await r.json();renderTagDist(d);}catch(e){} }
     async function loadSeverity() { try{const r=await fetch(`${API}/api/insights/severity-distribution`);const d=await r.json();renderSeverity(d);}catch(e){} }
@@ -658,22 +1245,403 @@
     function renderModelRank(data) { if(!data||!data.length)return; const el=document.getElementById('chartModelRank'); if(charts.model)charts.model.dispose(); charts.model=echarts.init(el); const th=getChartTheme();
       charts.model.setOption({tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{data:['高严重度','影响体验','轻微'],textStyle:{color:th.textColor}},grid:{left:'20%',right:'5%'},xAxis:{type:'value',axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'category',data:data.map(d=>d.model),axisLabel:{color:th.textColor},axisLine:{lineStyle:{color:th.gridColor}}},series:[{name:'高严重度',type:'bar',stack:'total',data:data.map(d=>d.sev3),itemStyle:{color:'#f87171'}},{name:'影响体验',type:'bar',stack:'total',data:data.map(d=>d.sev2),itemStyle:{color:'#fbbf24'}},{name:'轻微',type:'bar',stack:'total',data:data.map(d=>d.sev1),itemStyle:{color:'#8a9bb4'}}]}); }
 
+    // === 六帽视角切换 ===
+    function switchHatView(hat, btn) {
+      document.querySelectorAll('.hat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.hat-view').forEach(v => v.style.display = 'none');
+      const view = document.getElementById('hatView-' + hat);
+      if (view) view.style.display = 'block';
+      if (hat === 'white') { Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} }); }
+      if (hat === 'red') loadHatRed();
+      if (hat === 'black') loadHatBlack();
+      if (hat === 'yellow') loadHatYellow();
+      if (hat === 'green') loadHatGreen();
+      if (hat === 'blue') loadHatBlue();
+    }
+    async function loadHatRed() {
+      try { const r = await fetch(`${API}/api/insights/sentiment-distribution`); const d = await r.json(); renderSentiment2(d); } catch(e) {}
+      try { const r = await fetch(`${API}/api/insights/emotion-distribution`); const d = await r.json(); renderEmotion(d); } catch(e) {}
+    }
+    function renderSentiment2(data) { if(!data||!data.values||!data.values.length)return; const el=document.getElementById('chartSentiment2'); if(!el)return; if(charts.sent2)charts.sent2.dispose(); charts.sent2=echarts.init(el); const colors=['#f87171','#fbbf24','#8a9bb4','#4ade80','#00d4ff']; const th=getChartTheme(); charts.sent2.setOption({tooltip:{trigger:'axis'},xAxis:{type:'category',data:data.labels,axisLabel:{color:th.textColor},axisLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'value',axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},series:[{type:'bar',data:data.values.map((v,i)=>({value:v,itemStyle:{color:colors[i]||'#00d4ff'}})),itemStyle:{borderRadius:[4,4,0,0]}}]}); }
+    function renderEmotion(data) { if(!data||!data.values||!data.values.length)return; const el=document.getElementById('chartEmotion'); if(!el)return; if(charts.emotion)charts.emotion.dispose(); charts.emotion=echarts.init(el); const th=getChartTheme(); const colors={anger:'#f87171',disappointment:'#fbbf24',satisfaction:'#4ade80',surprise:'#00d4ff',neutral:'#8a9bb4'}; const keys=data.keys||[]; charts.emotion.setOption({tooltip:{trigger:'item',formatter:'{b}: {c} ({d}%)'},legend:{bottom:0,textStyle:{color:th.textColor}},series:[{type:'pie',radius:['40%','70%'],data:data.labels.map((l,i)=>({name:l,value:data.values[i],itemStyle:{color:colors[keys[i]]||colors[l]||'#00d4ff'}}))}]}); }
+    async function loadHatBlack() {
+      try { const r = await fetch(`${API}/api/insights/sev3-by-brand`); const d = await r.json(); renderSev3Chart(d); } catch(e) {}
+      try { const r = await fetch(`${API}/api/pain-points?min_severity=3&limit=50`); const d = await r.json(); renderSev3List(d); } catch(e) {}
+    }
+    function renderSev3Chart(data) { const el=document.getElementById('chartSev3'); if(!el)return; if(!data||!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">暂无致命缺陷数据</p>';return;} if(charts.sev3)charts.sev3.dispose(); charts.sev3=echarts.init(el); const th=getChartTheme(); const brands=data.map(d=>d.brand); const counts=data.map(d=>d.count); charts.sev3.setOption({tooltip:{trigger:'axis',formatter:p=>`${p[0].name}: ${p[0].value} 条致命缺陷`},grid:{left:'15%',right:'5%',bottom:'10%'},xAxis:{type:'value',axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'category',data:brands,axisLabel:{color:th.textColor},axisLine:{lineStyle:{color:th.gridColor}}},series:[{type:'bar',data:counts,itemStyle:{color:'#f87171',borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:th.textColor,fontSize:11}}]}); }
+    function renderSev3List(data) { const el=document.getElementById('sev3List'); if(!el)return; if(!data||!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:1rem;">暂无致命缺陷</p>';return;} el.innerHTML=data.map(c=>`<div style="background:var(--bg2);border:1px solid var(--rule);border-radius:8px;padding:0.8rem;margin-bottom:0.5rem;cursor:pointer;" onclick="loadTupleDetail('${c.original_id||''}')"><div style="display:flex;justify-content:space-between;"><strong style="color:var(--danger);">[严重度${c.severity}]</strong><span style="color:var(--muted);font-size:0.75rem;">${c.brand_name||''} ${c.product_match||''}</span></div><div style="margin:0.4rem 0;font-size:0.85rem;">${escapeHtml((c.summary_zh||c.content_clean||'').slice(0,120))}</div>${c.pain_root_cause?`<div style="font-size:0.78rem;color:var(--accent);">根因: ${escapeHtml(c.pain_root_cause)}</div>`:''}</div>`).join(''); }
+    async function loadHatYellow() {
+      try { const r = await fetch(`${API}/api/insights/positive-tags`); const d = await r.json(); renderPositiveTags(d); } catch(e) {}
+    }
+    function renderPositiveTags(data) { const el=document.getElementById('chartPositive'); if(!el)return; if(!data||!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">暂无正面反馈</p>';return;} if(charts.positive)charts.positive.dispose(); charts.positive=echarts.init(el); const th=getChartTheme(); charts.positive.setOption({tooltip:{trigger:'axis'},grid:{left:'20%',right:'5%'},xAxis:{type:'value',axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'category',data:data.map(d=>d.tag),axisLabel:{color:th.textColor},axisLine:{lineStyle:{color:th.gridColor}}},series:[{type:'bar',data:data.map(d=>d.count),itemStyle:{color:'#4ade80',borderRadius:[0,4,4,0]}}]}); const pl=document.getElementById('positiveList'); if(pl&&data.length){pl.innerHTML=data.slice(0,20).map(d=>`<div style="background:var(--bg2);border:1px solid var(--rule);border-radius:6px;padding:0.5rem;margin-bottom:0.3rem;font-size:0.8rem;"><span style="color:var(--accent3);font-weight:600;">${escapeHtml(d.tag)}</span> <span style="color:var(--muted);">(${d.count}次提及)</span></div>`).join('');} }
+    async function loadHatGreen() {
+      try { const r = await fetch(`${API}/api/insights/solution-tags`); const d = await r.json(); renderSolutionTags(d); } catch(e) {}
+      try { const r = await fetch(`${API}/api/insights/user-solutions`); const d = await r.json(); renderSolutions(d); } catch(e) {}
+    }
+    function renderSolutionTags(data) { const el=document.getElementById('chartSolutionTags'); if(!el)return; if(!data||!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">暂无用户改良方向数据</p>';return;} if(charts.solTags)charts.solTags.dispose(); charts.solTags=echarts.init(el); const th=getChartTheme(); const tags=data.map(d=>d.tag); const counts=data.map(d=>d.count); charts.solTags.setOption({tooltip:{trigger:'axis',formatter:p=>`${p[0].name}: ${p[0].value} 次提及`},grid:{left:'18%',right:'5%',bottom:'10%'},xAxis:{type:'value',axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'category',data:tags,axisLabel:{color:th.textColor},axisLine:{lineStyle:{color:th.gridColor}}},series:[{type:'bar',data:counts,itemStyle:{color:'#10b981',borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:th.textColor,fontSize:11}}]}); }
+    function renderSolutions(data) { const el=document.getElementById('solutionList'); if(!el)return; if(!data||!data.length){el.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem;">暂无用户改良方案</p>';return;} el.innerHTML=data.map(s=>`<div style="background:var(--bg2);border:1px solid var(--rule);border-radius:8px;padding:0.8rem;margin-bottom:0.5rem;"><div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span style="color:var(--accent2);font-weight:600;">${escapeHtml(s.brand||'')}</span><span style="color:var(--muted);font-size:0.75rem;">${escapeHtml(s.product_match||'')}</span></div><div style="font-size:0.82rem;color:var(--ink);margin-bottom:0.3rem;"><span style="color:var(--accent3);">用户建议:</span> ${escapeHtml(s.user_solution||'')}</div>${s.summary_zh?`<div style="font-size:0.78rem;color:var(--muted);">摘要: ${escapeHtml(s.summary_zh)}</div>`:''}</div>`).join(''); }
+    async function loadHatBlue() {
+      try { const r = await fetch(`${API}/api/insights/analysis-progress`); const d = await r.json(); renderAnalysisProgress(d); } catch(e) {}
+      try { const r = await fetch(`${API}/api/insights/field-fill-rates`); const d = await r.json(); renderFieldFillRates(d); } catch(e) {}
+      try { const r = await fetch(`${API}/api/gold-standard/report`); const d = await r.json(); renderQCStats(d); } catch(e) {}
+    }
+    function renderAnalysisProgress(data) { const el=document.getElementById('chartCoverage'); if(!el||!data)return; if(charts.coverage)charts.coverage.dispose(); charts.coverage=echarts.init(el); const th=getChartTheme(); const pct=Math.min(data.coverage,100); charts.coverage.setOption({series:[{type:'gauge',radius:'90%',startAngle:180,endAngle:0,min:0,max:100,progress:{show:true,width:14,itemStyle:{color:'#3b82f6'}},axisLine:{lineStyle:{width:14,color:[[1,th.gridColor]]}},pointer:{show:false},axisTick:{show:false},splitLine:{show:false},axisLabel:{show:false},detail:{valueAnimation:true,formatter:'{value}%',color:th.textColor,fontSize:20,offsetCenter:[0,'10px']},data:[{value:pct}]}],title:{show:false}}); const info=document.getElementById('coverageInfo'); if(info){info.innerHTML=`<div style="font-size:13px;color:var(--muted);margin-top:8px;">已分析 <strong style="color:var(--accent);">${data.analyzed}</strong> / ${data.total} 条 · 待分析 <strong style="color:var(--warn);">${data.unanalyzed}</strong> 条${data.old_analyses>0?` · 需升级 <strong style="color:var(--danger);">${data.old_analyses}</strong> 条`:''}</div>`;} }
+    function renderFieldFillRates(data) { const el=document.getElementById('chartFillRates'); if(!el||!data||!data.fields)return; if(charts.fillRates)charts.fillRates.dispose(); charts.fillRates=echarts.init(el); const th=getChartTheme(); const labels=data.fields.map(f=>f.label); const rates=data.fields.map(f=>f.rate); const colors=data.fields.map(f=>f.rate>=80?'#10b981':f.rate>=20?'#f59e0b':'#f87171'); charts.fillRates.setOption({tooltip:{trigger:'axis',formatter:p=>`${p[0].name}: ${p[0].value}%`},grid:{left:'15%',right:'8%',bottom:'15%'},xAxis:{type:'category',data:labels,axisLabel:{color:th.textColor,rotate:35,fontSize:10},axisLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'value',max:100,axisLabel:{color:th.textColor,formatter:'{value}%'},splitLine:{lineStyle:{color:th.gridColor}}},series:[{type:'bar',data:rates.map((r,i)=>({value:r,itemStyle:{color:colors[i]}})),itemStyle:{borderRadius:[4,4,0,0]}}]}); }
+    function renderQCStats(data) { const el=document.getElementById('qcStats'); if(!el)return; if(!data||data.error){el.innerHTML=`<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:1rem;">${data?data.error:'暂无数据'}</div>`;return;} el.innerHTML=`<div class="stat-card"><div class="label">Gold Standard 样本</div><div class="value">${data.total}</div></div><div class="stat-card"><div class="label">标签准确率</div><div class="value" style="color:${data.tag_accuracy>=70?'var(--accent3)':'var(--danger)'};">${data.tag_accuracy}%</div></div><div class="stat-card"><div class="label">严重度准确率</div><div class="value" style="color:${data.severity_accuracy>=85?'var(--accent3)':'var(--danger)'};">${data.severity_accuracy}%</div></div><div class="stat-card"><div class="label">情感一致率</div><div class="value" style="color:${data.sentiment_accuracy>=85?'var(--accent3)':'var(--danger)'};">${data.sentiment_accuracy}%</div></div>`; const ga=document.getElementById('goldStandardArea'); if(ga)ga.innerHTML=`<p style="color:var(--muted);font-size:0.8rem;">标签命中: ${data.tag_match}/${data.total} | 严重度命中: ${data.severity_match}/${data.total} | 情感一致: ${data.sentiment_match}/${data.total}</p>`; }
+
+    // === Spec-Pain 回归分析 ===
+    async function loadSpecPain() {
+      const sk=document.getElementById('specKeyInput').value.trim();
+      const pt=document.getElementById('painTagInput').value.trim();
+      if(!sk||!pt){showToast('请填写规格参数和痛点标签','error');return;}
+      try{const r=await fetch(`${API}/api/specs/regression?spec_key=${encodeURIComponent(sk)}&pain_tag=${encodeURIComponent(pt)}`);const d=await r.json();renderSpecPain(d);}catch(e){showToast('加载失败','error');}
+    }
+    function renderSpecPain(data) { const el=document.getElementById('chartSpecPain'); if(!el)return; if(!data||data.error){el.innerHTML=`<p style="color:var(--warn);text-align:center;padding:2rem;">${data?data.error:'暂无数据'}</p>`;return;} if(charts.specPain)charts.specPain.dispose(); charts.specPain=echarts.init(el); const th=getChartTheme(); const pts=data.data||[]; const threshold=data.threshold; charts.specPain.setOption({tooltip:{formatter:p=>`${p.data.brand} ${p.data.model}<br/>参数: ${p.data.x}${p.data.unit}<br/>负面占比: ${p.data.y}%<br/>评论: ${p.data.negative_comments}/${p.data.total_comments}`},grid:{left:'10%',right:'5%',bottom:'12%'},xAxis:{name:data.spec_key,type:'value',nameTextStyle:{color:th.textColor},axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},yAxis:{name:'负面声量占比(%)',type:'value',nameTextStyle:{color:th.textColor},axisLabel:{color:th.textColor,formatter:'{value}%'},splitLine:{lineStyle:{color:th.gridColor}}},series:[{type:'scatter',symbolSize:20,data:pts.map(d=>({...d,value:[d.x,d.y]})),itemStyle:{color:'#00d4ff'},label:{show:true,formatter:p=>p.data.brand,position:'top',color:th.textColor,fontSize:10}},threshold?{type:'line',markLine:{data:[{xAxis:threshold}],lineStyle:{color:'#f87171',type:'dashed'},label:{formatter:`临界值: ${threshold}`,color:'#f87171'}}}:{}]}); }
+
+    // === 四元组详情 ===
+    async function loadTupleDetail(commentId) {
+      if(!commentId){showToast('无法定位评论','error');return;}
+      try{const r=await fetch(`${API}/api/analyses/${encodeURIComponent(commentId)}/tuple`);const d=await r.json();renderTupleDetail(d);}catch(e){showToast('加载失败','error');}
+    }
+    function renderTupleDetail(data) { const panel=document.getElementById('tuplePanel'); if(!panel||!data)return; panel.style.display='block'; const grid=document.getElementById('tupleGrid'); if(!grid)return; const fields=[{label:'场景环境',value:data.context_environment},{label:'硬件元器件',value:data.hardware_component},{label:'用户行为',value:data.user_action},{label:'根因分析',value:data.pain_root_cause}]; grid.innerHTML=fields.map(f=>`<div class="tuple-item"><div class="tuple-label">${f.label}</div><div class="tuple-value">${f.value?escapeHtml(f.value):'<span style="color:var(--muted);">未提取</span>'}</div></div>`).join(''); panel.scrollIntoView({behavior:'smooth'}); }
+
     // === 改良建议 ===
-    async function generateReport() { const btn=document.getElementById('btnGenerate'),area=document.getElementById('reportArea'); btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 生成中...'; area.innerHTML='<div style="text-align:center;padding:3rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">AI 正在分析痛点数据并生成改良建议，请耐心等待（约30-60秒）...</p></div>';
-      try{const r=await fetch(`${API}/api/insights/generate-report`,{method:'POST'});const d=await r.json();if(d.error){area.innerHTML=`<div class="empty"><p style="color:var(--danger);">${d.error}</p></div>`;}else{area.innerHTML=`<div class="report-content">${marked.parse(d.report)}</div><p style="color:var(--muted);font-size:0.8rem;margin-top:1rem;text-align:right;">生成时间: ${d.generated_at}</p>`;}}catch(e){area.innerHTML=`<div class="empty"><p style="color:var(--danger);">生成失败: ${e.message}</p></div>`;}finally{btn.disabled=false;btn.innerHTML='生成报告';} }
+    let lastReportHtml=''; let lastReportTime=''; let lastReportCharts=null;
+    // === 建议报告 v2（程序统计 + 证据链 + LLM 仅润色）===
+    let reportV2Cache=null;
+    const evidenceCache={};
+    async function generateReportV2() {
+      const btn=document.getElementById('btnGenerate');
+      const area=document.getElementById('reportV2Area');
+      btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 生成中...';
+      area.innerHTML='<div style="text-align:center;padding:3rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">正在实算聚类统计 → 优先级排序 → 组装证据链...</p></div>';
+      try{
+        const params={
+          top_k: parseInt(document.getElementById('rptTopK').value)||15,
+          weight_reach: parseFloat(document.getElementById('rptWReach').value)||0.35,
+          weight_negativity: parseFloat(document.getElementById('rptWNeg').value)||0.25,
+          weight_severity: parseFloat(document.getElementById('rptWSev').value)||0.25,
+          weight_trend: parseFloat(document.getElementById('rptWTrend').value)||0.15,
+        };
+        const r=await fetch(`${API}/api/report/v2/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)});
+        const d=await r.json();
+        if(!d.job_id)throw new Error(d.detail||'任务创建失败');
+        if(d.deduplicated)showToast('已有报告任务在运行','info');
+        const job=await pollJob(d.job_id,j=>{area.innerHTML=`<div style="text-align:center;padding:3rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">${escapeHtml(j.message||'运行中...')}</p></div>`;});
+        if(job.status==='failed')throw new Error(job.error||job.message||'生成失败');
+        if(job.status==='empty'){area.innerHTML=`<div class="empty"><p>${escapeHtml(job.message||'无法生成报告')}</p></div>`;return;}
+        showToast(job.message||'报告生成完成','success');
+        await loadReportV2();
+      }catch(e){ area.innerHTML=`<div class="empty"><p style="color:var(--danger);">生成失败: ${escapeHtml(e.message)}</p></div>`; showToast('失败: '+e.message,'error'); }
+      finally{ btn.disabled=false; btn.innerHTML='生成报告'; }
+    }
+    async function loadReportV2() {
+      const area=document.getElementById('reportV2Area'); if(!area)return;
+      try{
+        const r=await fetch(`${API}/api/report/v2/latest`); const d=await r.json();
+        if(!d.exists){ area.innerHTML='<div class="empty"><div class="icon">📊</div><p>点击"生成报告"：基于聚类结果实算统计，生成带证据链的优先级建议<br>（无需 API Key 也可生成；配置 Key 后建议文案由 AI 润色）</p></div>'; return; }
+        reportV2Cache=d.report; renderReportV2(d.report);
+      }catch(e){ area.innerHTML=`<div class="empty"><p style="color:var(--danger);">加载失败: ${escapeHtml(e.message)}</p></div>`; }
+    }
+    function renderReportV2(rep) {
+      const area=document.getElementById('reportV2Area');
+      const sugs=rep.suggestions||[];
+      const meta=document.getElementById('reportV2Meta');
+      const cv=(rep.params&&rep.params.cluster_version)||'—';
+      meta.textContent=`聚类版本 ${cv} · 生成于 ${rep.created_at} · ${sugs.length} 条建议（证据可展开核验）`;
+      const doNow=sugs.filter(s=>s.priority_score>=5&&s.effort!=='H');
+      const schedule=sugs.filter(s=>s.priority_score>=5&&s.effort==='H');
+      const defer=sugs.filter(s=>s.priority_score<5);
+      let html=`<div class="rpt-ov">优先级 = <strong>影响面×0.35 + 负面×0.25 + 严重度×0.25 + 趋势×0.15</strong>（权重可在上方调整）·
+        建议执行顺序：<strong>先做</strong> ${doNow.length} 条（高分低/中难度）· <strong>排期</strong> ${schedule.length} 条（高分高难度）· <strong>暂缓</strong> ${defer.length} 条 ·
+        所有数字由程序从数据库实算，LLM 仅参与文案润色</div>`;
+      html+='<table class="rpt-queue"><tr><th>#</th><th>建议</th><th>得分</th><th>难度</th><th>证据</th><th>品牌覆盖</th></tr>';
+      sugs.forEach((s,i)=>{
+        html+=`<tr><td>${i+1}</td><td>${escapeHtml(s.title)}</td><td><strong style="color:var(--accent);">${s.priority_score}</strong></td>
+          <td><span class="sug-badge eff-${s.effort}">${s.effort}</span></td>
+          <td>${(s.evidence_comment_ids||[]).length} 条</td><td>${(s.affected_brands||[]).length} 个</td></tr>`;
+      });
+      html+='</table>';
+      html+=sugs.map((s,i)=>renderSugCard(s,i)).join('');
+      area.innerHTML=html;
+    }
+    function renderSugCard(s,i) {
+      const evCount=(s.evidence_comment_ids||[]).length;
+      const brands=(s.affected_brands||[]).slice(0,6).join('、');
+      const detailHtml=sanitizeReportHtml(marked.parse(s.detail_md||''));
+      return `<div class="sug-card" id="sug-${s.id}">
+        <div class="sug-head">
+          <div class="sug-rank ${i<3?'top':''}">${i+1}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="sug-title">${escapeHtml(s.title)}<span class="sug-cluster">来源主题：${escapeHtml(s.cluster_topic||'')}</span></div>
+            <div class="sug-badges">
+              <span class="sug-badge eff-${s.effort}">难度 ${s.effort}</span>
+              ${s.spec_hint?`<span class="sug-badge">规格指向：${escapeHtml(s.spec_hint)}</span>`:''}
+              <span class="sug-badge">${(s.affected_brands||[]).length} 个品牌</span>
+              ${brands?`<span class="sug-badge">${escapeHtml(brands)}</span>`:''}
+            </div>
+          </div>
+          <div class="sug-score"><strong>${s.priority_score}</strong><span>优先级/10</span></div>
+        </div>
+        <div class="sug-detail">${detailHtml}</div>
+        ${s.opportunity?`<div class="ev-zh" style="margin-top:0.5rem;">💡 ${escapeHtml(s.opportunity)}</div>`:''}
+        <div class="sug-factors">📐 ${escapeHtml(s.priority_factors||'')}</div>
+        <div class="sug-evidence-toggle">
+          <button onclick="toggleEvidence('${s.id}')">展开证据（${evCount} 条原文 + 来源链接）▾</button>
+        </div>
+        <div class="sug-evidence" id="ev-${s.id}" style="display:none;"></div>
+      </div>`;
+    }
+    async function toggleEvidence(sid) {
+      const box=document.getElementById('ev-'+sid); const btn=box.previousElementSibling.querySelector('button');
+      if(box.style.display!=='none'){ box.style.display='none'; btn.innerHTML=btn.innerHTML.replace('▴','▾'); return; }
+      if(!box.innerHTML){
+        box.innerHTML='<p style="color:var(--muted);font-size:0.8rem;padding:0.6rem 0;">加载证据中...</p>';
+        try{
+          let ev=evidenceCache[sid];
+          if(!ev){
+            const r=await fetch(`${API}/api/suggestions/${encodeURIComponent(sid)}/evidence`);
+            if(!r.ok)throw new Error('HTTP '+r.status);
+            ev=await r.json(); evidenceCache[sid]=ev;
+          }
+          box.innerHTML=ev.map(e=>{
+            let pt=e.pain_tags; if(typeof pt==='string'){try{pt=JSON.parse(pt)}catch(err){pt=[]}}
+            const tags=(pt||[]).slice(0,5).map(t=>`<span class="sug-badge">${escapeHtml(t)}</span>`).join(' ');
+            const zh=e.translation_zh||e.summary_zh;
+            const root=e.pain_root_cause?`<div class="ev-root">⚙ 根因：${escapeHtml(e.pain_root_cause)}</div>`:'';
+            const ctx=e.context_environment?`<div class="ev-root">📍 场景：${escapeHtml(e.context_environment)}</div>`:'';
+            return `<div class="ev-item">
+              <div class="ev-meta">
+                <span>[${escapeHtml(e.brand_name||'?')}/${escapeHtml(e.platform||'?')}]</span>
+                ${e.severity?`<span class="badge sev-${e.severity}">严重度 ${e.severity}</span>`:''}
+                ${e.sentiment_score?`<span>情感 ${e.sentiment_score}/5</span>`:''}
+                ${e.like_count?`<span>👍 ${e.like_count}</span>`:''}
+                ${e.source_url?`<a href="${escapeHtml(e.source_url)}" target="_blank" rel="noopener noreferrer">查看原文 ↗</a>`:''}
+              </div>
+              <div class="ev-quote">${escapeHtml(e.content_clean||'')}</div>
+              ${zh&&zh!==(e.content_clean||'')?`<div class="ev-zh">🇨🇳 ${escapeHtml(zh)}</div>`:''}
+              ${ctx}${root}
+              ${tags?`<div style="margin-top:0.3rem;">${tags}</div>`:''}
+            </div>`;
+          }).join('')||'<p style="color:var(--muted);">无证据</p>';
+        }catch(e){ box.innerHTML=`<p style="color:var(--danger);font-size:0.8rem;">证据加载失败: ${escapeHtml(e.message)}</p>`; }
+      }
+      box.style.display='block'; btn.innerHTML=btn.innerHTML.replace('▾','▴');
+    }
+    async function generateReportLegacy() {
+      document.getElementById('legacyReportWrap').style.display='block';
+      await generateReport();
+    }
+
+    async function generateReport() { const btn=document.getElementById('btnGenerateLegacy'),area=document.getElementById('reportArea'); btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 生成中...'; area.innerHTML='<div style="text-align:center;padding:3rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">AI 正在分析痛点数据并生成改良建议，请耐心等待（最长约3分钟）...</p></div>';
+      document.getElementById('btnExportHtml').style.display='none';
+      document.getElementById('btnExportPdf').style.display='none';
+      try{
+        const r=await fetch(`${API}/api/insights/generate-report`,{method:'POST'});
+        const d=await r.json();
+        if(d.error){area.innerHTML=`<div class="empty"><p style="color:var(--danger);">${escapeHtml(d.error)}</p></div>`;}
+        else{
+          const rendered=marked.parse(d.report||'');
+          const safeHtml=sanitizeReportHtml(rendered);
+          lastReportHtml=safeHtml;
+          lastReportTime=d.generated_at||'';
+          lastReportCharts=d.charts||null;
+          // 构建图文混排报告
+          let chartsHtml='';
+          if(d.charts){
+            const s=d.charts.stats||{};
+            // 数据概览卡片
+            chartsHtml+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;">`;
+            chartsHtml+=`<div style="text-align:center;padding:1rem;border-radius:8px;background:var(--bg2);"><div style="font-size:1.8rem;font-weight:700;color:var(--accent);">${s.total_comments||0}</div><div style="font-size:0.75rem;color:var(--muted);">总评论数</div></div>`;
+            chartsHtml+=`<div style="text-align:center;padding:1rem;border-radius:8px;background:var(--bg2);"><div style="font-size:1.8rem;font-weight:700;color:var(--accent);">${s.total_analyses||0}</div><div style="font-size:0.75rem;color:var(--muted);">已分析数</div></div>`;
+            chartsHtml+=`<div style="text-align:center;padding:1rem;border-radius:8px;background:var(--bg2);"><div style="font-size:1.8rem;font-weight:700;color:var(--accent);">${s.total_brands||0}</div><div style="font-size:0.75rem;color:var(--muted);">品牌数</div></div>`;
+            chartsHtml+=`<div style="text-align:center;padding:1rem;border-radius:8px;background:var(--bg2);"><div style="font-size:1.8rem;font-weight:700;color:var(--danger);">${s.high_severity||0}</div><div style="font-size:0.75rem;color:var(--muted);">高严重度痛点</div></div>`;
+            chartsHtml+=`</div>`;
+            // 图表容器
+            chartsHtml+=`<h3 style="color:var(--accent);margin:1.5rem 0 0.5rem;">📊 痛点标签分布 Top 10</h3><div id="rptChart1" style="width:100%;height:350px;margin-bottom:1.5rem;"></div>`;
+            chartsHtml+=`<h3 style="color:var(--accent);margin:1.5rem 0 0.5rem;">🥧 严重度分布</h3><div id="rptChart2" style="width:100%;height:300px;margin-bottom:1.5rem;"></div>`;
+            chartsHtml+=`<h3 style="color:var(--accent);margin:1.5rem 0 0.5rem;">🔥 品牌 × 痛点热力图</h3><div id="rptChart3" style="width:100%;height:400px;margin-bottom:1.5rem;"></div>`;
+            chartsHtml+=`<h3 style="color:var(--accent);margin:1.5rem 0 0.5rem;">🎯 优先级矩阵</h3><div id="rptChart4" style="width:100%;height:350px;margin-bottom:1.5rem;"></div>`;
+            chartsHtml+=`<hr style="border-color:var(--rule);margin:1.5rem 0;"><h3 style="color:var(--accent);margin:1rem 0 0.5rem;">📝 AI 改良建议详情</h3>`;
+          }
+          area.innerHTML=`<div class="report-content">${chartsHtml}<div class="report-text">${safeHtml}</div></div><p style="color:var(--muted);font-size:0.8rem;margin-top:1rem;text-align:right;">生成时间: ${escapeHtml(d.generated_at||'')}</p>`;
+          // 渲染图表
+          if(d.charts){renderReportCharts(d.charts);}
+          document.getElementById('btnExportHtml').style.display='inline-flex';
+          document.getElementById('btnExportPdf').style.display='inline-flex';
+        }
+      }catch(e){area.innerHTML=`<div class="empty"><p style="color:var(--danger);">生成失败: ${escapeHtml(e.message)}</p></div>`;}
+      finally{btn.disabled=false;btn.innerHTML='旧版报告';}
+    }
+    function renderReportCharts(charts){
+      const th=getChartTheme();
+      const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+      const bgColor=isDark?'#0f1419':'#ffffff';
+      const accentColor=isDark?'#00d4ff':'#0284c7';
+      const dangerColor='#f87171';
+      const mutedColor=isDark?'#8a9bb4':'#64748b';
+      // 图1: 痛点标签分布柱状图
+      const c1=document.getElementById('rptChart1');
+      if(c1&&charts.tag_distribution){
+        const ch=echarts.init(c1);
+        const td=charts.tag_distribution;
+        ch.setOption({tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},legend:{data:['致命缺陷','影响体验','轻微吐槽'],textStyle:{color:th.textColor}},grid:{left:'8%',right:'5%',bottom:'15%'},xAxis:{type:'category',data:td.map(d=>d.tag),axisLabel:{color:th.textColor,rotate:30},axisLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'value',axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},series:[{name:'致命缺陷',type:'bar',stack:'s',data:td.map(d=>d.sev3||0),itemStyle:{color:dangerColor}},{name:'影响体验',type:'bar',stack:'s',data:td.map(d=>d.sev2||0),itemStyle:{color:'#fbbf24'}},{name:'轻微吐槽',type:'bar',stack:'s',data:td.map(d=>d.sev1||0),itemStyle:{color:mutedColor}}]});
+      }
+      // 图2: 严重度分布饼图
+      const c2=document.getElementById('rptChart2');
+      if(c2&&charts.severity_distribution){
+        const ch=echarts.init(c2);
+        const sd=charts.severity_distribution;
+        ch.setOption({tooltip:{trigger:'item'},legend:{bottom:'0',textStyle:{color:th.textColor}},series:[{type:'pie',radius:['40%','70%'],data:sd.labels.map((l,i)=>({name:l,value:sd.values[i]})),itemStyle:{borderColor:bgColor,borderWidth:2},label:{color:th.textColor},color:[mutedColor,'#fbbf24',dangerColor]}]});
+      }
+      // 图3: 品牌×痛点热力图
+      const c3=document.getElementById('rptChart3');
+      if(c3&&charts.brand_tag_matrix){
+        const ch=echarts.init(c3);
+        const bm=charts.brand_tag_matrix;
+        const heatData=[];
+        for(let i=0;i<bm.brands.length;i++){for(let j=0;j<bm.tags.length;j++){heatData.push([j,i,bm.data[i][j]]);}}
+        ch.setOption({tooltip:{position:'top'},grid:{left:'15%',right:'5%',bottom:'20%',top:'5%'},xAxis:{type:'category',data:bm.tags,axisLabel:{color:th.textColor,rotate:30},splitArea:{show:false}},yAxis:{type:'category',data:bm.brands,axisLabel:{color:th.textColor},splitArea:{show:false}},visualMap:{min:0,max:Math.max(...heatData.map(d=>d[2]),1),calculable:true,orient:'horizontal',left:'center',bottom:'0',textStyle:{color:th.textColor},inRange:{color:[bgColor,accentColor,dangerColor]}},series:[{type:'heatmap',data:heatData,label:{show:true,color:th.textColor},emphasis:{itemStyle:{shadowBlur:10}}}]});
+      }
+      // 图4: 优先级矩阵散点图
+      const c4=document.getElementById('rptChart4');
+      if(c4&&charts.priority_matrix){
+        const ch=echarts.init(c4);
+        const pm=charts.priority_matrix;
+        ch.setOption({tooltip:{formatter:p=>`${p.data[2]}<br/>频次: ${p.data[0]}<br/>平均严重度: ${p.data[1]}`},grid:{left:'8%',right:'5%',bottom:'15%'},xAxis:{type:'value',name:'频次',nameTextStyle:{color:th.textColor},axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},yAxis:{type:'value',name:'平均严重度',nameTextStyle:{color:th.textColor},min:1,max:3,axisLabel:{color:th.textColor},splitLine:{lineStyle:{color:th.gridColor}}},series:[{type:'scatter',symbolSize:d=>Math.sqrt(d[0])*4+10,data:pm.map(d=>[d.count,d.avg_severity,d.tag]),itemStyle:{color:accentColor,opacity:0.7},label:{show:true,formatter:p=>p.data[2],position:'top',color:th.textColor,fontSize:10}}]});
+      }
+    }
+    function sanitizeReportHtml(html) { const box=document.createElement('div'); box.innerHTML=html; box.querySelectorAll('script,style,iframe,object,embed,form').forEach(el=>el.remove()); box.querySelectorAll('a').forEach(a=>{try{const u=new URL(a.getAttribute('href')||'',window.location.origin);if(!['http:','https:'].includes(u.protocol))a.removeAttribute('href');else{a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';}}catch(e){a.removeAttribute('href');}}); box.querySelectorAll('*').forEach(el=>{[...el.attributes].forEach(attr=>{if(attr.name.toLowerCase().startsWith('on'))el.removeAttribute(attr.name);});}); return box.innerHTML; }
+
+    // === 报告导出（后端构建含 ECharts 的独立 HTML）===
+    function exportReportHtml() {
+      if(!lastReportHtml){showToast('请先生成报告','error');return;}
+      const ts=new Date().toISOString().slice(0,10);
+      const filename=`VoC改良建议报告_${ts}.html`;
+      const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+      const theme=isDark?'dark':'light';
+      const btn=document.getElementById('btnExportHtml');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 导出中...';
+      // 发送报告HTML + 图表数据给后端，后端构建包含 ECharts 的独立 HTML
+      const payload={html:lastReportHtml,filename:filename,theme:theme};
+      if(lastReportCharts){payload.charts=lastReportCharts;payload.charts.generated_at=lastReportTime;}
+      fetch(`${API}/api/export/html`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.success){showToast(`报告已保存至: ${d.path}`,'success');}
+          else{showToast(d.error||'导出失败','error');}
+        })
+        .catch(e=>showToast('导出失败: '+e.message,'error'))
+        .finally(()=>{btn.disabled=false;btn.innerHTML='导出 HTML';});
+    }
+    async function exportReportPdf() {
+      if(!lastReportHtml){showToast('请先生成报告','error');return;}
+      const btn=document.getElementById('btnExportPdf');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 导出中...';
+      const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+      const theme=isDark?'dark':'light';
+      // 先从后端获取包含 ECharts 的完整 HTML
+      const payload={html:lastReportHtml,filename:'_temp_print.html',theme:theme};
+      if(lastReportCharts){payload.charts=lastReportCharts;payload.charts.generated_at=lastReportTime;}
+      try{
+        const r=await fetch(`${API}/api/export/html`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const d=await r.json();
+        if(!d.success){showToast(d.error||'导出失败','error');return;}
+        // 读取后端生成的完整 HTML
+        const fullHtml=await fetch(`${API}/api/export/read-file?path=${encodeURIComponent(d.path)}`).then(r=>r.text());
+        // 用隐藏 iframe 替代 window.open，兼容 pywebview
+        let iframe=document.getElementById('__printFrame');
+        if(!iframe){iframe=document.createElement('iframe');iframe.id='__printFrame';iframe.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';document.body.appendChild(iframe);}
+        const doc=iframe.contentWindow.document;
+        doc.open();doc.write(fullHtml);doc.close();
+        iframe.contentWindow.focus();
+        // 等待 ECharts 渲染完成后再打印
+        setTimeout(()=>{
+          try{iframe.contentWindow.print();}catch(e){showToast('打印失败，请重试','error');}
+        },1500);
+        showToast('在打印对话框中选择"另存为 PDF"','info');
+      }catch(e){showToast('PDF 导出失败: '+e.message,'error');}
+      finally{btn.disabled=false;btn.innerHTML='导出 PDF';}
+    }
+
+    // === 改良提案生成器 ===
+    async function generateProposal() {
+      const btn=document.getElementById('btnGenProposal');
+      const area=document.getElementById('proposalArea');
+      const tag=document.getElementById('proposalPainTag').value;
+      const brand=document.getElementById('proposalBrand').value;
+      const minSev=document.getElementById('proposalMinSev').value;
+      const bom=document.getElementById('proposalBom').value.trim();
+      const mold=document.getElementById('proposalMold').value.trim();
+      btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 生成中...';
+      area.innerHTML='<div style="text-align:center;padding:3rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">AI 正在生成改良提案，请耐心等待...</p></div>';
+      try{
+        const r=await fetch(`${API}/api/proposals/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pain_tag:tag,brand:brand||null,min_severity:Number(minSev),bom_constraint:bom,mold_constraint:mold})});
+        const d=await r.json();
+        if(d.error){area.innerHTML=`<div class="empty"><p style="color:var(--danger);">${escapeHtml(d.error)}</p></div>`;}
+        else{
+          const rendered=marked.parse(d.report||'');
+          const safeHtml=sanitizeReportHtml(rendered);
+          let metaHtml='<div class="proposal-meta">';
+          metaHtml+=`<span>痛点: ${escapeHtml(d.pain_tag)}</span>`;
+          if(d.brand)metaHtml+=`<span>品牌: ${escapeHtml(d.brand)}</span>`;
+          metaHtml+=`<span>证据: ${d.evidence_count}条</span>`;
+          metaHtml+=`<span>竞品规格: ${d.has_specs?'有':'无'}</span>`;
+          metaHtml+=`<span>回归分析: ${d.has_regression?'有':'无'}</span>`;
+          metaHtml+=`<span>时间: ${escapeHtml(d.generated_at)}</span>`;
+          metaHtml+='</div>';
+          area.innerHTML=metaHtml+'<div class="report-content">'+safeHtml+'</div>';
+        }
+      }catch(e){showToast('生成失败: '+e.message,'error');area.innerHTML='<div class="empty"><p style="color:var(--danger);">生成失败</p></div>';}
+      finally{btn.disabled=false;btn.innerHTML='生成提案';}
+    }
+
+    async function loadProposalBrands(){try{const r=await fetch(`${API}/api/brands`);const b=await r.json();const s=document.getElementById('proposalBrand');s.innerHTML='<option value="">全部品牌</option>';b.forEach(x=>{const o=document.createElement('option');o.value=x.name;o.textContent=x.name;s.appendChild(o);});}catch(e){}}
 
     // === 设置 ===
     let providersData=[];
-    async function openSettings(){document.getElementById('settingsModal').classList.add('show');await loadProviders();await loadLLMConfig();await loadBrandList();}
+    async function openSettings(){document.getElementById('settingsModal').classList.add('show');await Promise.all([loadProviders(),loadLLMConfig(),loadBrandList(),loadRedditCookieConfig(),loadRedditConfig(),loadInstagramConfig(),loadFacebookConfig(),loadFilterConfig(),loadExportConfig(),loadCompetitorSpecs()]);}
     function closeSettings(){document.getElementById('settingsModal').classList.remove('show');}
     async function loadProviders(){try{const r=await fetch(`${API}/api/llm/providers`);providersData=await r.json();const s=document.getElementById('llmProvider');s.innerHTML='<option value="">请选择...</option>';providersData.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.appendChild(o);});}catch(e){}}
-    async function loadLLMConfig(){try{const r=await fetch(`${API}/api/llm/config`);const c=await r.json();document.getElementById('llmProvider').value=c.provider||'';if(c.provider){onProviderChange();const k=c.api_keys[c.provider]||'';const ki=document.getElementById('llmApiKey');if(k.includes('***')){ki.value='';ki.placeholder=`已配置(${k})`;}else{ki.value=k;}const m=c.models[c.provider]||'';if(m)document.getElementById('llmModel').value=m;}}catch(e){}}
+    async function loadLLMConfig(){try{const r=await fetch(`${API}/api/llm/config`);const c=await r.json();document.getElementById('llmProvider').value=c.provider||'';if(c.provider){onProviderChange();const k=c.api_keys[c.provider]||'';const ki=document.getElementById('llmApiKey');if(k.includes('***')){ki.value='';ki.placeholder=`已配置(${k})（留空则保留原 Key）`;}else{ki.value=k;}const m=c.models[c.provider]||'';if(m)document.getElementById('llmModel').value=m;}}catch(e){}}
     function onProviderChange(){const p=document.getElementById('llmProvider').value,s=p!=='';document.getElementById('apiKeyRow').style.display=s?'block':'none';document.getElementById('modelRow').style.display=s?'block':'none';if(s){const i=providersData.find(x=>x.id===p);if(i){const ms=document.getElementById('llmModel');ms.innerHTML='';i.models.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;ms.appendChild(o);});ms.value=i.default_model;const ku=document.getElementById('keyUrl');ku.href=i.key_url;ku.style.display='block';ku.textContent=`获取 ${i.name} API Key`;}}}
     async function testConnection(){const p=document.getElementById('llmProvider').value,k=document.getElementById('llmApiKey').value,m=document.getElementById('llmModel').value;if(!p){showToast('请选提供商','error');return;}if(!k){showToast('请输入Key','error');return;}const b=document.getElementById('btnTest');b.disabled=true;b.innerHTML='<span class="spinner"></span>';try{const r=await fetch(`${API}/api/llm/test`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:p,api_key:k,model:m})});const d=await r.json();showToast(d.message,d.success?'success':'error');}catch(e){showToast('失败','error');}finally{b.disabled=false;b.innerHTML='测试';}}
-    async function saveLLMConfig(){const p=document.getElementById('llmProvider').value,k=document.getElementById('llmApiKey').value,m=document.getElementById('llmModel').value;if(!p){showToast('请选提供商','error');return;}const c={provider:p,api_keys:{},models:{}};if(k)c.api_keys[p]=k;c.models[p]=m;try{const r=await fetch(`${API}/api/llm/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok')showToast('保存成功','success');}catch(e){showToast('失败','error');}}
+    async function loadRedditConfig(){try{const r=await fetch(`${API}/api/reddit/config`);const c=await r.json();document.getElementById('redditClientId').value=c.client_id||'';const cs=document.getElementById('redditClientSecret');if(c.client_secret&&c.client_secret.includes('***')){cs.value='';cs.placeholder=`已配置(${c.client_secret})`;}else{cs.value=c.client_secret||'';}document.getElementById('redditUsername').value=c.username||'';const rp=document.getElementById('redditPassword');if(c.password){rp.value='';rp.placeholder='已配置（留空保留）';}else{rp.value='';}}catch(e){}}
+async function saveRedditConfig(){const c={client_id:document.getElementById('redditClientId').value,client_secret:document.getElementById('redditClientSecret').value,username:document.getElementById('redditUsername').value,password:document.getElementById('redditPassword').value,};try{const r=await fetch(`${API}/api/reddit/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok')showToast('Reddit OAuth 配置已保存','success');}catch(e){showToast('保存失败','error');}}
+async function testRedditConnection(){const b=document.getElementById('btnRedditTest');b.disabled=true;b.innerHTML='<span class="spinner"></span>';try{const r=await fetch(`${API}/api/reddit/test`,{method:'POST'});const d=await r.json();showToast(d.message,d.success?'success':'error');}catch(e){showToast('测试失败','error');}finally{b.disabled=false;b.innerHTML='测试连接';}}
+async function diagnoseReddit(){const b=document.getElementById('btnRedditDiagnose');const r=document.getElementById('redditDiagnoseResult');b.disabled=true;b.innerHTML='<span class="spinner"></span> 诊断中...';r.style.display='block';r.innerHTML='<span style="color:var(--muted);">正在诊断 Reddit 连接...</span>';try{const resp=await fetch(`${API}/api/reddit/diagnose`,{method:'POST'});const d=await resp.json();let html='<div style="margin-bottom:0.5rem;font-weight:600;">诊断结果：</div>';if(d.checks&&d.checks.length>0){d.checks.forEach(c=>{const icon=c.status==='pass'?'<span style="color:#28a745;">✓</span>':'<span style="color:#dc3545;">✗</span>';html+=`<div style="margin-bottom:0.3rem;">${icon} <b>${c.name}</b>: ${c.detail}</div>`;});}if(d.recommendation){const color=d.checks&&d.checks.every(c=>c.status==='pass')?'#28a745':'#dc3545';html+=`<div style="margin-top:0.5rem;padding:0.4rem;border-radius:4px;background:var(--bg);color:${color};white-space:pre-wrap;">${d.recommendation}</div>`;}r.innerHTML=html;}catch(e){r.innerHTML='<span style="color:#dc3545;">诊断失败: '+e+'</span>';}finally{b.disabled=false;b.innerHTML='诊断';}}
+// === Reddit Cookie 配置（方案B）===
+async function loadRedditCookieConfig(){try{const r=await fetch(`${API}/api/reddit/cookie/config`);const c=await r.json();document.getElementById('redditCookieMethod').value=c.method||'browser';document.getElementById('redditBrowser').value=c.browser||'chrome';const t=document.getElementById('redditManualCookies');if(c.cookies&&c.cookies.includes('***')){t.value='';t.placeholder='已配置（留空保留原值）';}else{t.value='';t.placeholder='粘贴 cookies...';}const st=document.getElementById('redditCookieStatus');if(c.configured){st.textContent=c.method==='manual'?'✓ 手动 cookies 已配置，点击「测试连接」验证':'✓ 已缓存浏览器 cookies，可以直接测试连接或抓取';st.style.color='#28a745';}else{st.textContent='尚未配置 cookies，请选择手动模式粘贴 cookies 或浏览器模式提取';st.style.color='var(--muted)';}onRedditCookieMethodChange();}catch(e){}}
+function onRedditCookieMethodChange(){const m=document.getElementById('redditCookieMethod').value;document.getElementById('redditBrowserRow').style.display=m==='browser'?'flex':'none';document.getElementById('redditManualCookiesRow').style.display=m==='manual'?'flex':'none';document.getElementById('btnRedditExtract').style.display=m==='browser'?'inline-block':'none';}
+async function saveRedditCookieConfig(){const c={method:document.getElementById('redditCookieMethod').value,browser:document.getElementById('redditBrowser').value,cookies:document.getElementById('redditManualCookies').value};try{const r=await fetch(`${API}/api/reddit/cookie/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok'){showToast('Reddit Cookie 配置已保存','success');const st=document.getElementById('redditCookieStatus');st.textContent='✓ 配置已保存，点击「测试连接」验证';st.style.color='#28a745';}}catch(e){showToast('保存失败','error');}}
+async function extractRedditCookies(){const b=document.getElementById('btnRedditExtract');const st=document.getElementById('redditCookieStatus');b.disabled=true;b.innerHTML='<span class="spinner"></span> 提取中...';st.textContent='正在提取 cookies，请确保浏览器已关闭...';st.style.color='var(--muted)';try{const r=await fetch(`${API}/api/reddit/cookie/extract`,{method:'POST'});const d=await r.json();if(d.success){st.textContent=`✓ ${d.message}（${d.cookie_count} 个 cookies）`;st.style.color='#28a745';showToast(d.message,'success');}else{st.textContent=`✗ ${d.message}`;st.style.color='#dc3545';showToast(d.message,'error');}}catch(e){st.textContent='提取失败: '+e;st.style.color='#dc3545';showToast('提取失败','error');}finally{b.disabled=false;b.innerHTML='提取 Cookies';}}
+async function testRedditCookieConnection(){const b=document.getElementById('btnRedditCookieTest');const st=document.getElementById('redditCookieStatus');b.disabled=true;b.innerHTML='<span class="spinner"></span> 测试中...';st.textContent='正在保存配置并测试 Cookie 连接...';st.style.color='var(--muted)';try{const method=document.getElementById('redditCookieMethod').value;const cookies=document.getElementById('redditManualCookies').value;if(method==='manual'&&cookies.trim()){const sc={method,browser:document.getElementById('redditBrowser').value,cookies};await fetch(`${API}/api/reddit/cookie/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sc)});}const r=await fetch(`${API}/api/reddit/cookie/test`,{method:'POST'});const d=await r.json();if(d.success){st.textContent=`✓ ${d.message}`;st.style.color='#28a745';}else{st.textContent=`✗ ${d.message}`;st.style.color='#dc3545';}showToast(d.message,d.success?'success':'error');}catch(e){st.textContent='✗ 测试失败: '+e;st.style.color='#dc3545';showToast('测试失败','error');}finally{b.disabled=false;b.innerHTML='测试连接';}}
+    // === Instagram 配置 ===
+    async function loadInstagramConfig(){try{const r=await fetch(`${API}/api/instagram/config`);const c=await r.json();document.getElementById('igUsername').value=c.username||'';const p=document.getElementById('igPassword');if(c.password&&c.password.includes('***')){p.value='';p.placeholder='已配置（留空保留）';}else{p.value='';p.placeholder='输入密码';}}catch(e){}}
+    async function saveInstagramConfig(){const c={username:document.getElementById('igUsername').value,password:document.getElementById('igPassword').value};try{const r=await fetch(`${API}/api/instagram/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok')showToast('Instagram 配置已保存','success');}catch(e){showToast('保存失败','error');}}
+    // === Facebook 配置 ===
+    async function loadFacebookConfig(){try{const r=await fetch(`${API}/api/facebook/config`);const c=await r.json();const t=document.getElementById('fbCookies');if(c.cookies&&c.cookies.includes('***')){t.value='';t.placeholder='已配置（留空保留原值）';}else{t.value='';t.placeholder='粘贴 cookies JSON...';}}catch(e){}}
+    async function saveFacebookConfig(){const c={cookies:document.getElementById('fbCookies').value};try{const r=await fetch(`${API}/api/facebook/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok')showToast('Facebook 配置已保存','success');}catch(e){showToast('保存失败','error');}}
+    // === 评论质量过滤配置 ===
+    async function loadFilterConfig(){try{const r=await fetch(`${API}/api/filter/config`);const c=await r.json();document.getElementById('qfEnabled').value=String(!!c.enabled);document.getElementById('qfMinWords').value=c.min_words;document.getElementById('qfEmojiOnly').value=String(!!c.emoji_only_filter);document.getElementById('qfLinkOnly').value=String(!!c.link_only_filter);document.getElementById('qfLinkSpam').value=String(c.link_spam_filter!==false);document.getElementById('qfLinkSpamMinWords').value=c.link_spam_min_words||8;document.getElementById('qfLikesReddit').value=(c.min_likes&&c.min_likes.reddit)||0;document.getElementById('qfDeepDepth').value=c.deep_reply_depth;document.getElementById('qfDeepPenalty').value=c.deep_reply_penalty;}catch(e){console.error('load filter config',e);}}
+    async function saveFilterConfig(){const c={enabled:document.getElementById('qfEnabled').value==='true',min_words:parseInt(document.getElementById('qfMinWords').value)||0,emoji_only_filter:document.getElementById('qfEmojiOnly').value==='true',link_only_filter:document.getElementById('qfLinkOnly').value==='true',link_spam_filter:document.getElementById('qfLinkSpam').value==='true',link_spam_min_words:parseInt(document.getElementById('qfLinkSpamMinWords').value)||8,min_likes:{reddit:parseInt(document.getElementById('qfLikesReddit').value)||0},deep_reply_depth:parseInt(document.getElementById('qfDeepDepth').value)||3,deep_reply_penalty:parseFloat(document.getElementById('qfDeepPenalty').value)||0.15};try{const r=await fetch(`${API}/api/filter/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok'){showToast('过滤规则已保存','success');showQfStatus('已保存。新抓取的评论立即生效；如需应用到历史评论，请点击「按当前规则重算全部评论」。');}}catch(e){showToast('保存失败','error');showQfStatus('保存失败: '+e.message,true);}}
+    async function recomputeFilters(){const b=document.getElementById('btnQfRecompute');b.disabled=true;b.textContent='重算中，请稍候...';showQfStatus('正在按当前规则重算全部评论...');try{const r=await fetch(`${API}/api/filter/recompute`,{method:'POST'});const d=await r.json();if(r.ok){const by=d.by_reason||{};showQfStatus(`重算完成：共 ${d.total} 条，通过 ${d.passed}，过滤 ${d.filtered}（太短 ${by.too_short||0} / 纯表情 ${by.emoji_only||0} / 纯链接 ${by.link_only||0} / 链接垃圾 ${by.link_spam||0} / 低赞 ${by.low_likes||0}）`);showToast('重算完成','success');}else{showQfStatus('重算失败: HTTP '+r.status,true);}}catch(e){showQfStatus('重算失败: '+e.message,true);}finally{b.disabled=false;b.textContent='按当前规则重算全部评论';}}
+    function showQfStatus(msg,isErr){const el=document.getElementById('qfStatus');el.textContent=msg;el.style.color=isErr?'#dc3545':'var(--muted)';}
+    // === 导出配置 ===
+    async function loadExportConfig(){try{const r=await fetch(`${API}/api/export/config`);const c=await r.json();document.getElementById('exportDir').value=c.export_dir||'';}catch(e){}}
+    async function saveExportConfig(){const dir=document.getElementById('exportDir').value.trim();try{const r=await fetch(`${API}/api/export/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({export_dir:dir})});const d=await r.json();if(d.status==='ok')showToast('导出配置已保存','success');}catch(e){showToast('保存失败','error');}}
+    async function pickExportFolder(){const b=document.getElementById('btnPickFolder');b.disabled=true;b.innerHTML='<span class="spinner"></span>';try{const r=await fetch(`${API}/api/export/pick-folder`);const d=await r.json();if(d.path){document.getElementById('exportDir').value=d.path;}}catch(e){showToast('选择文件夹失败','error');}finally{b.disabled=false;b.innerHTML='浏览';}}
+async function saveLLMConfig(){const p=document.getElementById('llmProvider').value,k=document.getElementById('llmApiKey').value,m=document.getElementById('llmModel').value;if(!p){showToast('请选提供商','error');return;}const c={provider:p,api_keys:{},models:{}};if(k)c.api_keys[p]=k;c.models[p]=m;try{const r=await fetch(`${API}/api/llm/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok')showToast('保存成功','success');}catch(e){showToast('失败','error');}}
     async function loadBrandList(){try{const r=await fetch(`${API}/api/brands`);const b=await r.json();const l=document.getElementById('brandList');if(!b.length){l.innerHTML='<p style="color:var(--muted);text-align:center;padding:1rem;">暂无</p>';return;}l.innerHTML=b.map(x=>`<div class="brand-item"><div><strong style="color:var(--accent2);">${x.name}</strong><span style="color:var(--muted);font-size:0.8rem;"> — ${x.search_keyword}</span><span style="color:var(--accent);font-size:0.72rem;"> (${x.comment_count}/${x.analyzed_count})</span></div><button class="btn sm" style="color:var(--danger);" onclick="deleteBrand('${x.id}','${x.name}')">删</button></div>`).join('');}catch(e){}}
     async function addNewBrand(){const n=document.getElementById('newBrandName').value.trim(),k=document.getElementById('newBrandKeyword').value.trim();if(!n||!k){showToast('请填写','error');return;}try{const r=await fetch(`${API}/api/brands`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,search_keyword:k})});if(r.ok){showToast('添加成功','success');document.getElementById('newBrandName').value='';document.getElementById('newBrandKeyword').value='';await loadBrandList();await loadBrands();await loadCrawlBrands();}else{const e=await r.json();showToast(e.detail||'失败','error');}}catch(e){showToast('失败','error');}}
     async function deleteBrand(id,name){if(!confirm(`删除"${name}"?`))return;try{const r=await fetch(`${API}/api/brands/${id}`,{method:'DELETE'});if(r.ok){showToast('已删除','success');await loadBrandList();await loadBrands();await loadCrawlBrands();await loadStats();}}catch(e){showToast('失败','error');}}
+
+    // === 竞品规格管理 ===
+    async function loadCompetitorSpecs(){try{const[br,sp]=await Promise.all([fetch(`${API}/api/brands`).then(r=>r.json()),fetch(`${API}/api/specs`).then(r=>r.json())]);const ss=document.getElementById('specBrandSelect');ss.innerHTML='';br.forEach(b=>{const o=document.createElement('option');o.value=b.id;o.textContent=b.name;ss.appendChild(o);});const sl=document.getElementById('specList');if(!sp.length){sl.innerHTML='<p style="color:var(--muted);text-align:center;padding:1rem;">暂无规格数据</p>';return;}sl.innerHTML=sp.map(s=>`<div class="spec-row"><span class="spec-brand">${escapeHtml(s.brand_name||'')}</span><span class="spec-model">${escapeHtml(s.model||'')}</span><span class="spec-key">${escapeHtml(s.spec_key)}</span><span class="spec-val">${escapeHtml(s.spec_value)} ${escapeHtml(s.spec_unit||'')}</span><button class="btn sm" style="color:var(--danger);" onclick="deleteCompetitorSpec('${s.id}')">删</button></div>`).join('');}catch(e){}}
+    async function addCompetitorSpec(){const bid=document.getElementById('specBrandSelect').value,mdl=document.getElementById('specModelInput').value.trim(),cat=document.getElementById('specCategoryInput').value.trim(),key=document.getElementById('specKeyInput2').value.trim(),val=document.getElementById('specValueInput').value.trim(),unit=document.getElementById('specUnitInput').value.trim(),url=document.getElementById('specUrlInput').value.trim();if(!bid||!cat||!key||!val){showToast('品牌/类别/参数名/参数值不能为空','error');return;}try{const r=await fetch(`${API}/api/specs`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brand_id:bid,model:mdl,spec_category:cat,spec_key:key,spec_value:val,spec_unit:unit,source_url:url})});if(r.ok){showToast('添加成功','success');document.getElementById('specModelInput').value='';document.getElementById('specCategoryInput').value='';document.getElementById('specKeyInput2').value='';document.getElementById('specValueInput').value='';document.getElementById('specUnitInput').value='';document.getElementById('specUrlInput').value='';await loadCompetitorSpecs();}else{const e=await r.json();showToast(e.detail||'失败','error');}}catch(e){showToast('失败','error');}}
+    async function deleteCompetitorSpec(id){try{const r=await fetch(`${API}/api/specs/${id}`,{method:'DELETE'});if(r.ok){showToast('已删除','success');await loadCompetitorSpecs();}}catch(e){showToast('失败','error');}}
+
+    // populate proposal brand dropdown on init
+    loadProposalBrands();
 
     init();
   </script>

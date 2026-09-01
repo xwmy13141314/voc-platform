@@ -430,13 +430,13 @@
 
     <!-- ============ COVER ============ -->
     <header class="cover">
-      <span class="tag">PRD · v1.1 · 2026-07-29</span>
+      <span class="tag">PRD · v1.3 · 2026-09-01</span>
       <h1>VoC 痛点挖掘平台</h1>
       <p class="subtitle">海外三防手机市场竞品评论自动化抓取与 AI 痛点分析系统 — 需求规格与技术架构文档</p>
       <div class="meta">
         <span>项目方：RugOne 团队</span>
         <span>文档类型：0-to-1 产品 PRD + 技术架构</span>
-        <span>状态：MVP v0.5 已实现</span>
+        <span>状态：v1.2.0 已交付（v2.0 升级 Phase 1+2：质量过滤 + 痛点聚类）</span>
       </div>
     </header>
 
@@ -457,7 +457,7 @@
         <li><a href="#data-model">数据模型设计</a></li>
         <li><a href="#roadmap">实施路线图</a></li>
         <li><a href="#risks">风险与应对</a></li>
-        <li><a href="#impl-status">当前实现状态 (MVP v0.5)</a></li>
+        <li><a href="#impl-status">当前实现状态（v1.2）</a></li>
         <li><a href="#ui-design">前端界面设计</a></li>
         <li><a href="#api-doc">API 接口文档</a></li>
         <li><a href="#multi-llm">多 LLM 提供商支持</a></li>
@@ -1081,7 +1081,7 @@ flowchart LR
         </div>
 
         <div class="callout">
-          <div class="callout-title">MVP v0.5 实际选型</div>
+          <div class="callout-title">早期 MVP v0.5 实际选型（历史基线）</div>
           <p>MVP 实现阶段采用了更轻量的技术栈：<strong>SQLite</strong> 替代 PostgreSQL（无需运维，单文件存储），<strong>pywebview</strong> 替代 React 前端（单 HTML 页内嵌桌面窗口），<strong>PyInstaller</strong> 打包为独立 exe 替代 GCP 部署。LLM 改为支持国内 5 家提供商切换（含 DeepSeek / GLM / Kimi / 通义千问）而非海外三模型路由。详见<a href="#impl-status">第 14 节：当前实现状态</a>。</p>
         </div>
       </section>
@@ -1179,8 +1179,8 @@ CREATE INDEX idx_analyses_tags ON analyses USING GIN(pain_tags);
 CREATE INDEX idx_analyses_sentiment ON analyses(sentiment_score);</code></pre>
 
         <div class="callout">
-          <div class="callout-title">MVP v0.5 实际实现 (SQLite)</div>
-          <p>MVP 阶段使用 SQLite 替代 PostgreSQL，表结构保持一致但语法略有差异（如 <code>TEXT</code> 替代 <code>VARCHAR</code>，<code>datetime('now')</code> 替代 <code>NOW()</code>，JSON 存为 TEXT 字段）。实际实现包含 6 张表：<code>brands</code>、<code>products</code>、<code>videos</code>、<code>comments</code>、<code>analyses</code>、<code>settings</code>（新增配置表，存储 LLM 提供商 / API Key / 模型等配置）。数据库启用 WAL 模式提升并发性能，后续可平滑迁移至 PostgreSQL。</p>
+          <div class="callout-title">单机版 v0.8 实际实现（SQLite）</div>
+          <p>单机阶段使用 SQLite 替代 PostgreSQL，当前包含 7 张表：<code>brands</code>、<code>products</code>、<code>videos</code>、<code>comments</code>、<code>analyses</code>、<code>settings</code>、<code>jobs</code>。数据库启用 WAL 和外键约束；<code>jobs</code> 持久化后台抓取/分析任务的状态、进度、错误和结果。Windows 打包版数据默认保存在 <code>%LOCALAPPDATA%\VoC-Platform\data\voc.db</code>，已有数据库不会被发布包覆盖。</p>
         </div>
       </section>
 
@@ -1308,11 +1308,16 @@ gantt
         </div>
       </section>
 
-      <!-- ============ 14. 当前实现状态 (MVP v0.5) ============ -->
+      <!-- ============ 14. 当前实现状态（单机版 v0.8） ============ -->
       <section id="impl-status">
-        <h2>当前实现状态 (MVP v0.5)</h2>
+        <h2>当前实现状态（v1.2）</h2>
 
-        <p>截至 2026-07-29，MVP v0.5 已完成核心四层架构的全链路闭环，从数据抓取到 AI 改良建议报告生成均可端到端运行。以下为已实现功能与规划对比：</p>
+        <p>截至 2026-09-01，v1.2.0 已完成 v2.0 升级计划 Phase 1（数据质量与抓取强化）与 Phase 2（全局痛点聚类引擎）：新增评论质量过滤引擎、AliExpress 电商评论接入、Reddit OAuth 加固、BGE-M3 + UMAP + HDBSCAN 痛点聚类（79 个主题簇、簇中文命名）与「痛点聚类」页面。单机核心闭环自 v0.8 起持续打磨，云端化仍属于后续阶段。</p>
+
+        <div class="callout success">
+          <div class="callout-title">v1.2 发布验收基线</div>
+          <p>发布目录统一为 <code>release-v1.2/</code>。质量过滤全量重算通过（link_spam 拦截 16 条导购评论、真实评论零误伤）；全量聚类 5480 条可聚类评论 → 79 簇（64% 归簇率）；簇中文命名 79/79。种子数据库包含全量评论、分析、聚类与向量缓存。历史版本验收记录见 <code>CHANGELOG.md</code>。</p>
+        </div>
 
         <div class="table-wrap">
           <table>
@@ -1322,9 +1327,9 @@ gantt
             <tbody>
               <tr>
                 <td>数据抓取层</td>
-                <td>YouTube / Amazon / Reddit / TikTok / Instagram / Kickstarter</td>
-                <td><span class="badge high">YouTube ✓</span> <span class="badge high">Reddit ✓</span> <span class="badge high">Instagram ✓</span> <span class="badge mid">TikTok 元数据 ✓</span> <span class="badge low">Amazon ✗</span> <span class="badge low">Kickstarter ✗</span></td>
-                <td>yt-dlp (YouTube/TikTok) + Instaloader (Instagram) + Reddit JSON API</td>
+                <td>YouTube / Amazon / Reddit / TikTok / Instagram / AliExpress / Kickstarter</td>
+                <td><span class="badge mid">YouTube 条件可用</span> <span class="badge mid">Reddit OAuth ✓</span> <span class="badge mid">Instagram 条件可用</span> <span class="badge high">AliExpress ✓</span> <span class="badge mid">TikTok 元数据 ✓</span> <span class="badge low">Amazon ✗</span> <span class="badge low">Kickstarter ✗</span></td>
+                <td>yt-dlp（YouTube/TikTok）+ Instaloader（Instagram）+ Reddit OAuth（限流头解析、429 指数退避、楼中楼血缘）+ AliExpress 公开商品评论接口；入库统一执行质量过滤</td>
               </tr>
               <tr>
                 <td>AI 分析层</td>
@@ -1335,14 +1340,14 @@ gantt
               <tr>
                 <td>存储与检索层</td>
                 <td>Qdrant 向量库 + PostgreSQL</td>
-                <td><span class="badge high">SQLite ✓</span> <span class="badge low">Qdrant ✗</span> <span class="badge low">PostgreSQL ✗</span></td>
-                <td>SQLite + WAL 模式，6 张表，后续可平滑迁移 PostgreSQL</td>
+                <td><span class="badge high">SQLite ✓</span> <span class="badge high">向量缓存 ✓</span> <span class="badge low">Qdrant ✗</span> <span class="badge low">PostgreSQL ✗</span></td>
+                <td>SQLite + WAL 模式，13 张表（新增 clusters 簇表、embeddings 向量缓存表等）；BGE-M3 向量按内容哈希缓存，二次聚类分钟级完成；本机持久化，后续可平滑迁移 PostgreSQL</td>
               </tr>
               <tr>
                 <td>洞察输出层</td>
                 <td>痛点矩阵 + 雷达图 + 趋势看板 + 语义搜索</td>
-                <td><span class="badge high">痛点分布 ✓</span> <span class="badge high">热力图 ✓</span> <span class="badge high">优先级矩阵 ✓</span> <span class="badge high">型号排名 ✓</span> <span class="badge high">AI 报告 ✓</span> <span class="badge low">语义搜索 ✗</span></td>
-                <td>ECharts 可视化 + LLM 生成改良建议报告</td>
+                <td><span class="badge high">痛点分布 ✓</span> <span class="badge high">热力图 ✓</span> <span class="badge high">优先级矩阵 ✓</span> <span class="badge high">型号排名 ✓</span> <span class="badge high">AI 报告 ✓</span> <span class="badge high">报告导出 ✓</span> <span class="badge high">痛点聚类 ✓</span> <span class="badge low">语义搜索 ✗</span></td>
+                <td>ECharts 可视化 + LLM 生成改良建议报告 + 主题簇卡片（簇内评论钻取）</td>
               </tr>
             </tbody>
           </table>
@@ -1353,7 +1358,7 @@ gantt
         <div class="card-grid">
           <div class="card">
             <h4>多平台评论抓取</h4>
-            <p>YouTube (yt-dlp)、Reddit (JSON API)、Instagram (Instaloader) 支持评论抓取；TikTok 支持视频元数据抓取。品牌列表自动同步，支持自定义搜索关键词和最大抓取量。</p>
+            <p>YouTube（yt-dlp）、Reddit（JSON API + RSS fallback）、Instagram（Instaloader）提供公开内容 best-effort 抓取；TikTok 支持视频元数据。Reddit 全品牌任务恢复逐品牌搜索，网络/解析错误向任务层透传，不再以 0 条结果伪装成功。</p>
           </div>
           <div class="card">
             <h4>AI 结构化痛点分析</h4>
@@ -1368,18 +1373,26 @@ gantt
             <p>ECharts 可视化：痛点标签分布 Top 15、严重度饼图、情感分布饼图、优先级矩阵散点图、品牌×痛点热力图、型号痛点排名。支持暗色/亮色主题切换。</p>
           </div>
           <div class="card">
+            <h4>评论质量过滤引擎</h4>
+            <p>落盘前可配置规则闸门：有效长度下限（CJK 按字符/拉丁按词）、纯表情、纯链接、链接垃圾/导购话术（原文含 URL + 残留文本过短或命中促销模式）、按平台点赞阈值、楼中楼深度标记。被过滤评论仅标记 filtered=1 不删除，阈值调整后一键全量重算。</p>
+          </div>
+          <div class="card">
+            <h4>全局痛点聚类</h4>
+            <p>BGE-M3 多语言向量化（本地缓存 + 增量计算）→ UMAP 降维 → HDBSCAN 聚类，自动产出主题簇（当前 79 簇）；LLM 语义命名 + 无 Key 时中文词库降级命名；支持全量 / 增量归簇 / 重新命名三种模式与簇内评论钻取。</p>
+          </div>
+          <div class="card">
             <h4>AI 改良建议报告</h4>
             <p>基于已分析痛点数据，LLM 自动生成包含高频痛点改良建议、竞品差距分析、微创新机会、改良优先级清单（Top 10）的 Markdown 报告。</p>
           </div>
           <div class="card">
             <h4>桌面应用打包</h4>
-            <p>PyInstaller 打包为 VoC-Platform.exe，双击即用，无需安装 Python 环境。内嵌 FastAPI 后端 + pywebview 窗口 + 全部依赖。</p>
+            <p>使用 CPython 3.12 x64 + PyInstaller 6.21 打包为 VoC-Platform.exe，显式收集 jiter 与 pydantic_core 原生扩展。桌面入口为每个实例选择随机本机端口，并校验 v0.8 版本和实例 token，不再复用未知的 8000 服务。</p>
           </div>
         </div>
 
         <div class="callout warn">
-          <div class="callout-title">尚未实现（Phase 2/3 规划）</div>
-          <p><strong>语义搜索与聚类</strong>：Qdrant 向量库未接入，当前仅支持 SQL 关键词检索。<strong>趋势分析</strong>：时间序列趋势曲线尚未实现。<strong>PDF 报告导出</strong>：报告仅支持在线查看。<strong>人工反馈闭环</strong>：分析结果表已预留 human_corrected 字段，但前端修正界面未实现。<strong>Amazon/Kickstarter 抓取</strong>：需接入 Bright Data 付费 API。</p>
+          <div class="callout-title">尚未实现（v2.0 升级 Phase 3/4 规划）</div>
+          <p><strong>语义搜索</strong>：Qdrant 向量库未接入（聚类与向量缓存已实现，检索型语义搜索待做）。<strong>趋势分析</strong>：时间序列趋势曲线尚未实现。<strong>看板视图 PDF 导出</strong>：洞察看板暂不支持整体导出，改良建议报告已支持 HTML/PDF 导出（v0.9.1）。<strong>程序化统计层与证据链报告</strong>：W3 系列（LLM 只解释不计数、建议 Schema 溯源、优先级量化）待启动。<strong>Amazon / Twitter/X / Kickstarter / TikTok 评论抓取</strong>：需接入合规数据源。</p>
         </div>
       </section>
 
@@ -1387,7 +1400,7 @@ gantt
       <section id="ui-design">
         <h2>前端界面设计</h2>
 
-        <p>MVP v0.5 采用单页应用（SPA）架构，通过顶部导航栏切换四个功能页面。支持暗色/亮色双主题切换，状态持久化到 localStorage。</p>
+        <p>单机版 v1.2 采用单页应用（SPA）架构，通过顶部导航栏切换五个功能页面（仪表盘、数据采集、洞察看板、痛点聚类、改良建议）。支持暗色/亮色双主题、后台任务历史和分析结果人工修正。</p>
 
         <h3>页面一：仪表盘</h3>
         <p>系统默认首页，展示全局数据概览和痛点详情。</p>
@@ -1422,12 +1435,22 @@ gantt
           <li><strong>型号痛点排名</strong>：条形图，按高严重度痛点数排序 Top 20 型号</li>
         </ul>
 
-        <h3>页面四：改良建议</h3>
+        <h3>页面四：痛点聚类</h3>
+        <p>主题级痛点洞察，从逐条分析升级为簇级概览。</p>
+        <ul>
+          <li><strong>聚类操作区</strong>：最小簇规模、归簇阈值参数；全量聚类 / 增量归簇 / 重新命名三种模式，任务进度实时显示</li>
+          <li><strong>簇卡片</strong>：主题名（LLM 语义命名或中文词库降级命名）、评论数、平均严重度、平均情感、关键词标签</li>
+          <li><strong>簇内钻取</strong>：点击「查看簇内评论」展开成员评论（平台、品牌、点赞、分析结果摘要）</li>
+          <li><strong>降级策略</strong>：LLM 不可用时自动使用关键词命名并经三防手机领域词库翻译为中文，品牌/型号名保留英文</li>
+        </ul>
+
+        <h3>页面五：改良建议</h3>
         <p>AI 自动生成产品改良建议报告。</p>
         <ul>
           <li><strong>生成报告按钮</strong>：点击后后端聚合痛点数据，调用 LLM 生成 Markdown 格式报告</li>
           <li><strong>报告内容</strong>：包含四大板块 — 高频痛点改良建议（Top 5，含痛点描述/影响范围/技术方向/优先级）、竞品差距分析、微创新机会（含用户原话依据）、改良优先级清单（Top 10）</li>
           <li><strong>报告渲染</strong>：使用 Marked.js 将 Markdown 渲染为格式化 HTML</li>
+          <li><strong>报告导出（v0.9.1 新增）</strong>：报告生成后标题栏出现「导出 HTML」和「导出 PDF」按钮。导出 HTML 将完整报告（含样式、表格、排版）打包为独立 HTML 文件下载，文件名自动带日期，可离线打开或转发；导出 PDF 在新窗口中打开报告并调用浏览器打印对话框，选择「另存为 PDF」即可生成 PDF 文件。导出内容保留当前主题（浅色/深色）样式，打印时自动切换为适合打印的浅色排版</li>
         </ul>
 
         <h3>设置弹窗</h3>
@@ -1524,7 +1547,7 @@ gantt
 
         <div class="callout">
           <div class="callout-title">设计约定</div>
-          <p>所有耗时操作（抓取、分析、报告生成）均通过 <code>run_in_threadpool</code> 在后台线程执行，避免阻塞 FastAPI 事件循环。LLM 请求设置 60 秒超时且禁用自动重试，API Key 无效时立即停止批量分析并返回明确错误信息。</p>
+          <p>抓取与批量分析通过独立 <code>threading.Thread</code> 执行，并将进度、取消状态、结果和错误写入 <code>jobs</code> 表供前端轮询；报告生成使用 <code>run_in_threadpool</code>，避免阻塞 FastAPI 事件循环。LLM 请求设置 60 秒超时且禁用自动重试，认证失败会返回明确错误。</p>
         </div>
       </section>
 
@@ -1532,7 +1555,7 @@ gantt
       <section id="multi-llm">
         <h2>多 LLM 提供商支持</h2>
 
-        <p>MVP v0.5 放弃了原规划的多模型路由策略（Gemini + Claude + GPT-4o），改为支持 5 家国内外 LLM 提供商自由切换，全部通过 OpenAI SDK 兼容接口接入，用户可在应用内一键切换。</p>
+        <p>单机版 v0.8 支持 5 家国内外 LLM 提供商自由切换，全部通过 OpenAI SDK 兼容接口接入；Windows 下 API Key 优先使用 DPAPI 本机加密，前端返回时脱敏。</p>
 
         <div class="table-wrap">
           <table>
@@ -1598,21 +1621,21 @@ gantt
       <section id="packaging">
         <h2>桌面应用打包与分发</h2>
 
-        <p>MVP v0.5 采用 PyInstaller + pywebview 方案，将 Python 后端、前端 UI 和全部依赖打包为单个 <code>VoC-Platform.exe</code>，用户双击即可运行，无需安装 Python 环境。</p>
+        <p>单机版 v0.8 采用 PyInstaller + pywebview，将 Python 后端、前端 UI、jiter/pydantic_core 原生模块和抓取依赖打包为单个 <code>VoC-Platform.exe</code>，用户双击即可运行。</p>
 
         <h3>打包架构</h3>
         <div class="card-grid">
           <div class="card">
             <h4>app.py — 入口</h4>
-            <p>启动后台线程运行 FastAPI + Uvicorn 服务（127.0.0.1:8000），等待服务就绪后创建 pywebview 窗口加载本地页面。窗口尺寸 1280×860，支持文本选择。</p>
+            <p>先选择随机可用的 <code>127.0.0.1</code> 端口，再启动 FastAPI + Uvicorn。健康检查必须同时匹配当前版本号、实例 token、数据库和 jiter 状态，之后才创建 pywebview 窗口；不会静默连接旧版 8000 后端。</p>
           </div>
           <div class="card">
             <h4>voc-platform.spec — PyInstaller 配置</h4>
-            <p>使用 <code>collect_all</code> 收集 yt_dlp / webview / instaloader / praw 的全部依赖，<code>collect_submodules</code> 补充隐藏导入。排除 matplotlib / numpy / scipy / pandas / tkinter / playwright / selenium 减小体积。</p>
+            <p>使用 <code>collect_all</code> 收集 yt_dlp / webview / instaloader / jiter / pydantic_core，并显式声明原生隐藏模块。排除 matplotlib / numpy / scipy / pandas / tkinter / playwright / selenium，以及聚类科学计算栈（torch / sentence-transformers / umap / hdbscan，约 1GB+）——桌面精简版约 44MB，查看簇与 AI 重命名可用，重跑聚类需源码模式（入口返回友好提示）。</p>
           </div>
           <div class="card">
             <h4>数据持久化</h4>
-            <p>打包后 SQLite 数据库存储在 exe 同级目录的 <code>data/voc.db</code>，通过 <code>sys._MEIPASS</code> 判断运行模式自动适配路径。</p>
+            <p>打包版正式数据存储在 <code>%LOCALAPPDATA%\VoC-Platform\data\voc.db</code>。目标数据库不存在<strong>或为空库</strong>（仅建过空表）时，程序从发布目录 <code>data/voc.db</code> 迁移种子数据；绝不覆盖已有数据的本地库。<code>VOC_DATA_DIR</code> 可用于隔离测试。</p>
           </div>
         </div>
 
@@ -1620,19 +1643,19 @@ gantt
         <pre><code># 安装 PyInstaller
 pip install pyinstaller
 
-# 使用 spec 文件打包
-pyinstaller voc-platform.spec
+# 使用独立 v1.2 构建目录（不要加 --clean，会连带清空全局 PyInstaller 缓存）
+python -m PyInstaller --noconfirm --distpath .\dist-v1.2 --workpath .\build-v1.2 .\voc-platform.spec
 
 # 产物位置
-# dist/VoC-Platform.exe       — 可执行文件
-# dist/data/voc.db             — 空数据库（首次运行自动创建）</code></pre>
+# dist-v1.2/VoC-Platform.exe  — 构建产物
+# release-v1.2/               — 唯一发布目录（EXE + data/voc.db 种子库）</code></pre>
 
         <h3>分发方式</h3>
-        <p>将 <code>dist/VoC-Platform.exe</code> 单独压缩分发即可。首次运行时自动创建 <code>data/</code> 目录并初始化数据库。用户需在应用内设置页面配置 LLM API Key 后方可使用 AI 分析功能。</p>
+        <p>对外交付完整的 <code>release-v1.2/</code>，不要混用旧 <code>dist-*</code> 或历史 release 目录（已清理归档）。发布前执行 <code>VoC-Platform.exe --self-test</code>，核验原生模块、静态资源和种子数据库统计。用户仍需在设置页配置自己的 LLM API Key。</p>
 
         <div class="callout warn">
           <div class="callout-title">已知限制</div>
-          <p><strong>体积</strong>：打包后约 200-300MB（含 yt-dlp / Instaloader / pywebview 运行时）。<strong>TikTok 评论</strong>：yt-dlp 暂不支持 TikTok 评论提取，仅可获取视频元数据；Playwright 方案会增加 200MB 体积且不稳定，暂不采用。<strong>跨平台</strong>：当前仅支持 Windows 打包，macOS / Linux 需额外配置。</p>
+          <p><strong>平台变化</strong>：公开抓取属于 best-effort；YouTube 可能要求 Cookie，Reddit 匿名端点可能 403，Instagram 可能 401/429。<strong>TikTok 评论</strong>：目前仅采集元数据。<strong>跨平台</strong>：当前发布包只验证 Windows x64。v1.2 EXE 实测约 44.3MB（种子库 31.1MB）。</p>
         </div>
       </section>
 

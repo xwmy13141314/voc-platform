@@ -2,15 +2,17 @@
 
 > 中文文档 | [English Documentation](README_EN.md) | [中文文档 (Chinese)](README.md)
 
-![Version](https://img.shields.io/badge/version-v0.5-blue)
+![Version](https://img.shields.io/badge/version-v1.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
-![Python](https://img.shields.io/badge/python-3.10+-yellow)
+![Python](https://img.shields.io/badge/python-3.12%20x64-yellow)
 ![Status](https://img.shields.io/badge/status-active-success)
 
 A desktop application for automated competitor social media analysis and product pain point mining, built for the **RugOne** team. The platform automatically crawls competitor product reviews from overseas social media platforms, uses AI (LLM) for structured pain point analysis, and generates actionable product improvement guidance for the rugged phone market.
 
 **Target Brands:** Blackview, Ulefone, Doogee, Oukitel, Unihertz, and more.
+
+> **v1.2.0 (2026-09-01) — v2.0 upgrade Phase 1+2:** adds a configurable comment quality filter engine (incl. link-spam / promo-comment blocking), AliExpress e-commerce review ingestion, global pain point clustering (BGE-M3 multilingual embeddings + UMAP/HDBSCAN, 79 topic clusters with Chinese naming), and a dedicated Clustering page; GLM adds glm-5.2/5.3; detailed LLM 429 diagnostics. Distribution directory: `release-v1.2/`. Full history: [CHANGELOG.md](./CHANGELOG.md).
 
 ---
 
@@ -20,15 +22,15 @@ A desktop application for automated competitor social media analysis and product
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                          DATA CRAWLING LAYER                            │
 │                                                                         │
-│   YouTube (yt-dlp)   Reddit (JSON API)   Instagram   TikTok (metadata) │
+│   YouTube (yt-dlp)  Reddit (JSON+RSS)    Instagram   TikTok (metadata) │
 │         │                  │            (Instaloader)      │             │
 │         └──────────┬───────┴───────────────┴──────────────┘             │
 │                    ▼                                                     │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                     STORAGE & RETRIEVAL LAYER                           │
 │                                                                         │
-│                     SQLite Database (6 tables)                          │
-│       brands · products · videos · comments · analyses · settings       │
+│                     SQLite Database (7 tables)                          │
+│   brands · products · videos · comments · analyses · settings · jobs    │
 │                              │                                          │
 ├──────────────────────────────┼──────────────────────────────────────────┤
 │                    AI ANALYSIS LAYER                                    │
@@ -48,7 +50,7 @@ A desktop application for automated competitor social media analysis and product
 
 ## ✨ Features
 
-- **Multi-Platform Crawling** — Collect product reviews from YouTube, Reddit, Instagram, and TikTok with platform-specific engines
+- **Multi-Platform Collection** — Best-effort public collection from YouTube, Reddit, and Instagram; TikTok metadata support. Availability depends on network region, login state, and platform anti-bot changes
 - **AI-Powered Pain Point Analysis** — Structured extraction of sentiment, pain categories, severity levels, and user-suggested solutions via LLM
 - **Multi-LLM Support** — Compatible with 5 leading LLM providers (Gemini, DeepSeek, GLM, Kimi, Qwen) through a unified OpenAI-compatible interface
 - **Interactive Dashboard** — Stats cards, top pain tags, and a filterable/sortable pain points table
@@ -56,7 +58,8 @@ A desktop application for automated competitor social media analysis and product
 - **AI-Generated Improvement Reports** — Automated 4-section reports covering high-frequency pain improvements, competitor gap analysis, micro-innovation opportunities, and a prioritized improvement list
 - **Light/Dark Theme** — Theme toggle with localStorage persistence
 - **Brand-Grouped Comment Browser** — Clickable stats cards that drill into brand-specific comments
-- **Source Traceability** — Direct links to original YouTube comments for verification
+- **Source Traceability** — Public source URLs for videos, posts, and comments
+- **Truthful Job Outcomes** — Distinguishes success, no matching results, failure, and cancellation; network/parser errors are never reported as success
 - **Batch Analysis** — Configurable batch size (default 500) with round-robin across brands for balanced coverage
 - **Standalone Executable** — Package as a single `VoC-Platform.exe` — no Python installation required
 - **Robust Error Handling** — 60-second LLM timeout with disabled auto-retry and clear authentication error messages
@@ -90,7 +93,7 @@ A desktop application for automated competitor social media analysis and product
 | Backend | FastAPI + Uvicorn | High-performance async web framework |
 | Frontend | HTML + ECharts + Marked.js | Single-page UI with rich data visualization |
 | Desktop | pywebview | Wraps web UI in a native desktop window |
-| Database | SQLite | Lightweight embedded database (6 tables) |
+| Database | SQLite | Lightweight embedded database (7 tables, including jobs) |
 | Crawling | yt-dlp, Instaloader, requests | Multi-platform data collection |
 | AI | OpenAI SDK | Compatible with multiple LLM providers |
 | Language Detection | langdetect | Automatic comment language detection |
@@ -102,14 +105,17 @@ A desktop application for automated competitor social media analysis and product
 
 ### Method A: Download the Executable (For Non-Developers)
 
-1. Go to the [Releases](../../releases) page
-2. Download `VoC-Platform.exe`
-3. Double-click to launch — no Python installation needed
-4. Configure your LLM API key in the Settings page (see [LLM Configuration](#-llm-configuration))
+1. Obtain the complete `release-v1.2/` directory; do not mix it with old `dist-*` or historical release folders
+2. Double-click `release-v1.2/VoC-Platform.exe` — no Python installation needed
+3. Configure your LLM API key in the Settings page (see [LLM Configuration](#-llm-configuration))
+
+Packaged data is stored at `%LOCALAPPDATA%\VoC-Platform\data\voc.db`. On first launch only, the bundled `release-v1.2/data/voc.db` seed is copied when no local database exists (an empty schema-only database is also treated as "no data" and gets seeded); existing local data is never overwritten.
+
+> Desktop-lite build note: the clustering science stack (torch / sentence-transformers / umap / hdbscan, ~1GB+) is intentionally excluded from the EXE. Viewing clusters, drill-down and AI renaming work in the desktop app; re-running clustering requires source mode.
 
 ### Method B: Run from Source (For Developers)
 
-**Prerequisites:** Python 3.10+
+**Prerequisites:** Windows x64 and CPython 3.12 x64
 
 ```bash
 # 1. Clone the repository
@@ -134,7 +140,7 @@ cp .env.example .env
 python app.py
 ```
 
-The desktop application window will open automatically. The embedded FastAPI server runs on `http://127.0.0.1:8765`.
+The desktop application selects a private random loopback port and verifies the v0.8 instance token before opening its window, so it cannot silently attach to an older service on port 8000. Running `main.py` directly still defaults to `http://127.0.0.1:8000` for development.
 
 ---
 
@@ -222,6 +228,7 @@ GEMINI_API_KEY=your_api_key_here
 ```
 voc-platform/
 ├── app.py                  # Desktop app entry point (pywebview + FastAPI)
+├── version.py              # Shared app/schema version identity
 ├── main.py                 # FastAPI application with all API endpoints
 ├── config.py               # Configuration management
 ├── database.py             # SQLite database layer
@@ -232,6 +239,8 @@ voc-platform/
 ├── voc-platform.spec       # PyInstaller spec file
 ├── .env.example            # Environment config template
 ├── app_icon.ico            # Application icon
+├── tests/                  # test_smoke.py + test_link_spam.py regression checks
+├── release-v1.2/           # Canonical packaged release (EXE + database seed)
 ├── LICENSE                 # MIT License
 ├── static/
 │   └── index.html          # Frontend UI (single page, 4 tabs)
@@ -243,7 +252,7 @@ voc-platform/
 
 ## 🗄️ Database Schema
 
-The application uses SQLite with 6 tables, stored in `data/voc.db`:
+The application uses SQLite with 7 tables. Source runs use `data/voc.db`; packaged runs use `%LOCALAPPDATA%\VoC-Platform\data\voc.db` by default:
 
 ### 1. `brands`
 Stores competitor brand information.
@@ -253,6 +262,7 @@ Stores competitor brand information.
 | `id` | INTEGER (PK) | Primary key |
 | `name` | TEXT | Brand name |
 | `search_keyword` | TEXT | Default search keyword for crawling |
+| `brand_type` | TEXT | `competitor`, `own`, or benchmark type |
 | `created_at` | TIMESTAMP | Record creation time |
 
 ### 2. `products`
@@ -273,6 +283,8 @@ Stores crawled video/post metadata.
 |--------|------|-------------|
 | `id` | INTEGER (PK) | Primary key |
 | `video_id` | TEXT | Platform-specific video/post ID |
+| `platform` | TEXT | Source platform |
+| `external_id` | TEXT | Original platform ID |
 | `title` | TEXT | Video/post title |
 | `channel` | TEXT | Channel or author name |
 | `view_count` | INTEGER | View count |
@@ -280,6 +292,7 @@ Stores crawled video/post metadata.
 | `published_at` | TIMESTAMP | Original publish date |
 | `crawled_at` | TIMESTAMP | Crawl timestamp |
 | `brand_id` | INTEGER (FK) | Reference to `brands.id` |
+| `source_url` | TEXT | Public source URL |
 
 ### 4. `comments`
 Stores individual crawled comments.
@@ -297,6 +310,7 @@ Stores individual crawled comments.
 | `author` | TEXT | Comment author |
 | `like_count` | INTEGER | Like count |
 | `posted_at` | TIMESTAMP | Original comment timestamp |
+| `source_url` | TEXT | Comment or post source URL |
 | `crawled_at` | TIMESTAMP | Crawl timestamp |
 | `sentiment_pre` | TEXT | Pre-analysis sentiment guess |
 | `analyzed` | BOOLEAN | Whether AI analysis has been performed |
@@ -315,7 +329,10 @@ Stores AI analysis results for each comment.
 | `user_solution` | TEXT | User-suggested solution (if any) |
 | `product_match` | TEXT | Matched product model |
 | `summary_zh` | TEXT | Chinese summary of the analysis |
+| `translation_zh` | TEXT | Chinese translation of the comment |
+| `confidence` | REAL | AI confidence from 0 to 1 |
 | `llm_model` | TEXT | LLM model used for analysis |
+| `prompt_version` | TEXT | Prompt version |
 | `analyzed_at` | TIMESTAMP | Analysis timestamp |
 | `human_corrected` | BOOLEAN | Whether a human has corrected the result |
 
@@ -327,6 +344,11 @@ Stores application configuration as key-value pairs.
 | `key` | TEXT (PK) | Setting key |
 | `value` | TEXT | Setting value |
 | `updated_at` | TIMESTAMP | Last update time |
+
+### 7. `jobs`
+Stores asynchronous crawl/analysis task parameters, status, progress, errors, and local JSON results. Crawl outcomes include `succeeded`, `empty`, `failed`, and `cancelled`.
+
+All source data and task history remain local by default. On Windows, API keys use DPAPI encryption when available; legacy plaintext values remain readable for migration.
 
 ---
 
@@ -364,6 +386,8 @@ The embedded FastAPI server exposes the following endpoints:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/analyses` | Analysis results (filters: `brand`, `min_severity`, `limit`, `offset`) |
+| GET | `/api/analyses/{comment_id}` | Get one analysis and correction status |
+| PUT | `/api/analyses/{comment_id}` | Save a human-corrected analysis |
 
 ### LLM Configuration
 
@@ -389,12 +413,16 @@ The embedded FastAPI server exposes the following endpoints:
 |--------|----------|-------------|
 | POST | `/api/crawl` | Start a crawling task |
 | GET | `/api/platforms` | List supported platforms |
+| GET | `/api/jobs` | List local task history |
+| GET | `/api/jobs/{job_id}` | Poll task status, progress, and result |
+| POST | `/api/jobs/{job_id}/cancel` | Request cancellation of a queued/running task |
 
 ### Analysis
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/analyze` | Run AI analysis (params: `limit`, `brand`) |
+| GET | `/api/health` | Local service and database health check |
 
 ### Insights
 
@@ -420,24 +448,29 @@ The embedded FastAPI server exposes the following endpoints:
 
 To package the application as a standalone Windows executable using PyInstaller:
 
-**Prerequisites:** Install PyInstaller (not included in `requirements.txt` by default)
+**Build environment:** CPython 3.12 x64 and PyInstaller 6.21.0
 
 ```bash
-# 1. Install PyInstaller
-pip install pyinstaller>=6.3.0
+# 1. Install locked dependencies
+pip install -r requirements.txt
 
-# 2. Build using the spec file
-pyinstaller voc-platform.spec
+# 2. Build in versioned directories (no --clean; it also wipes the shared PyInstaller cache)
+python -m PyInstaller --noconfirm --distpath .\dist-v1.2 --workpath .\build-v1.2 .\voc-platform.spec
 
 # 3. The executable will be generated in:
-#    dist/VoC-Platform.exe
+#    dist-v1.2/VoC-Platform.exe
+
+# 4. Assemble the release folder: copy the EXE plus the current data/voc.db
+#    seed into release-v1.2/, then verify with:
+#    release-v1.2\VoC-Platform.exe --self-test
 ```
 
 The `voc-platform.spec` file contains all build configuration including:
 - Entry point (`app.py`)
-- Bundled data files (`static/`, `app_icon.ico`, `data/`)
-- Hidden imports for pywebview and yt-dlp
-- Window settings (icon, single instance)
+- Bundled data files (`static/`, `app_icon.ico`)
+- Hidden imports for pywebview, yt-dlp, `jiter`, and `pydantic_core`
+- Excludes for the clustering science stack (torch, sentence-transformers, umap, hdbscan — desktop-lite build keeps the EXE ~44MB)
+- Window settings and application icon
 
 > **Note:** The built executable includes all dependencies. End users do not need Python installed to run `VoC-Platform.exe`.
 
@@ -447,16 +480,23 @@ The `voc-platform.spec` file contains all build configuration including:
 
 | Platform | Crawling Method | Comments | Metadata | Notes |
 |----------|----------------|----------|----------|-------|
-| **YouTube** | yt-dlp | Supported | Supported | Full comment extraction with view/like counts |
-| **Reddit** | JSON API | Supported | Supported | Public subreddit and post comments |
-| **Instagram** | Instaloader | Supported | Supported | Requires login for some content |
+| **YouTube** | yt-dlp | Conditional | Conditional | Best-effort public extraction; may require cookies or suitable regional access |
+| **Reddit** | JSON API + RSS fallback | Conditional | Conditional | Anonymous endpoints may return 403; failures are surfaced explicitly |
+| **Instagram** | Instaloader | Conditional | Conditional | Some content requires login and may trigger 401/429 |
 | **TikTok** | Metadata only | Not supported | Supported | Comment crawling not supported; metadata only |
+
+### v0.8 Release Verification
+
+- 7 automated smoke tests passed
+- Packaged `jiter.cp312`, `pydantic_core.cp312`, static assets, and SQLite self-test passed
+- Seed data: 6,390 comments, 588 analyses, 12 brands, and 83 videos/posts
+- EXE SHA-256: `6012A3ADC1CFFECB09D444EF6B96014E8FFA117018A901EAC83FEB0C17CA7D49`
 
 ---
 
 ## 🎯 Default Competitor Brands
 
-The platform comes pre-loaded with 5 rugged phone competitor brands:
+The platform comes pre-loaded with 8 competitor brands and RugOne as the own-brand benchmark. Crawling and analysis run as asynchronous local jobs; poll `/api/jobs/{job_id}` for progress. Job history and all source data are kept in the local SQLite database. On Windows, API keys are stored with DPAPI when available.
 
 | Brand | Default Search Keyword |
 |-------|----------------------|
@@ -465,6 +505,10 @@ The platform comes pre-loaded with 5 rugged phone competitor brands:
 | Doogee | `Doogee rugged phone review` |
 | Oukitel | `Oukitel rugged phone review` |
 | Unihertz | `Unihertz rugged phone review` |
+| FOSSiBOT | `FOSSiBOT rugged phone review` |
+| Oscal | `Oscal rugged phone review` |
+| HOTWAV | `HOTWAV rugged phone review` |
+| RugOne (own brand) | `RugOne rugged phone review` |
 
 You can add, edit, or remove brands via the Brands API or the Settings page.
 
