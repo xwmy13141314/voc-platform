@@ -2,7 +2,7 @@
 
 > 中文文档 | [English Documentation](README_EN.md) | [中文文档 (Chinese)](README.md)
 
-![Version](https://img.shields.io/badge/version-v1.2.0-blue)
+![Version](https://img.shields.io/badge/version-v1.2.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 ![Python](https://img.shields.io/badge/python-3.12%20x64-yellow)
@@ -12,6 +12,7 @@ A desktop application for automated competitor social media analysis and product
 
 **Target Brands:** Blackview, Ulefone, Doogee, Oukitel, Unihertz, and more.
 
+> **v1.2.1 (2026-09-02):** unified version display (single source: version.py) + external clustering-deps hookup for the desktop-lite build (point Settings to a site-packages directory to re-run clustering).
 > **v1.2.0 (2026-09-01) — v2.0 upgrade Phase 1+2:** adds a configurable comment quality filter engine (incl. link-spam / promo-comment blocking), AliExpress e-commerce review ingestion, global pain point clustering (BGE-M3 multilingual embeddings + UMAP/HDBSCAN, 79 topic clusters with Chinese naming), and a dedicated Clustering page; GLM adds glm-5.2/5.3; detailed LLM 429 diagnostics. Distribution directory: `release-v1.2/`. Full history: [CHANGELOG.md](./CHANGELOG.md).
 
 ---
@@ -111,7 +112,7 @@ A desktop application for automated competitor social media analysis and product
 
 Packaged data is stored at `%LOCALAPPDATA%\VoC-Platform\data\voc.db`. On first launch only, the bundled `release-v1.2/data/voc.db` seed is copied when no local database exists (an empty schema-only database is also treated as "no data" and gets seeded); existing local data is never overwritten.
 
-> Desktop-lite build note: the clustering science stack (torch / sentence-transformers / umap / hdbscan, ~1GB+) is intentionally excluded from the EXE. Viewing clusters, drill-down and AI renaming work in the desktop app; re-running clustering requires source mode.
+> Desktop-lite build note: the clustering science stack (torch / sentence-transformers / umap / hdbscan, ~1GB+) is intentionally excluded from the EXE. Viewing clusters, drill-down and AI renaming work out of the box; to re-run clustering inside the desktop app, point Settings → "Clustering deps directory (desktop)" to a site-packages directory with the deps installed (e.g. the source-mode `.venv\Lib\site-packages`), click Test, then Save. The directory's Python build must match the EXE (Python 3.12 / cp312).
 
 ### Method B: Run from Source (For Developers)
 

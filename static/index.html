@@ -297,7 +297,7 @@
 
   <div class="header">
     <div>
-      <h1>VoC 痛点挖掘平台 <span class="version">v0.9.1</span></h1>
+      <h1>VoC 痛点挖掘平台 <span class="version" id="appVersionBadge">v…</span></h1>
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchPage('dashboard', this)">仪表盘</button>
@@ -687,6 +687,16 @@
         <div id="qfStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;line-height:1.5;"></div>
       </div>
       <hr style="border-color:var(--rule);margin:1.2rem 0;">
+      <div class="settings-section"><div class="settings-title">聚类依赖目录（桌面版）</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">桌面精简版 EXE 未内置聚类科学计算栈（torch / umap / hdbscan 约 1GB）。在此指定一个<b>已安装好聚类依赖的 site-packages 目录</b>（如源码模式 venv 的 <code>.venv\Lib\site-packages</code>），桌面版即可直接重跑聚类，无需切换源码模式。<br>要求：该目录的 Python 版本与桌面版一致（Python 3.12 / cp312），点「测试」会自动校验。</div>
+        <div class="settings-row"><label>依赖目录</label><input type="text" id="clusterDepsPath" placeholder="例如：E:\...\voc-platform\.venv\Lib\site-packages" style="flex:1;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" onclick="probeClusterDeps()">测试</button>
+          <button class="btn primary" onclick="saveClusterDeps()">保存</button>
+        </div>
+        <div id="clusterDepsStatus" style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;line-height:1.5;"></div>
+      </div>
+      <hr style="border-color:var(--rule);margin:1.2rem 0;">
       <div class="settings-section"><div class="settings-title">报告导出配置</div>
         <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5;">设置导出文件的保存目录。导出 HTML 报告时会自动保存到该目录；导出 PDF 时通过系统打印对话框选择保存位置。</div>
         <div class="settings-row"><label>导出目录</label><div style="display:flex;gap:8px;"><input type="text" id="exportDir" placeholder="默认：桌面" style="flex:1;"><button class="btn" onclick="pickExportFolder()" id="btnPickFolder">浏览</button></div></div>
@@ -946,7 +956,9 @@
       }
     }
 
-    async function init() { initTheme(); await loadBrands(); await loadStats(); await loadPainPoints(); await loadJobHistory(); }
+    async function loadVersionBadge() { try { const r = await fetch(`${API}/api/health`); const h = await r.json(); const el = document.getElementById('appVersionBadge'); if (el && h.version) el.textContent = 'v' + h.version; } catch (e) {} }
+
+    async function init() { initTheme(); loadVersionBadge(); await loadBrands(); await loadStats(); await loadPainPoints(); await loadJobHistory(); }
 
     async function loadBrands() {
       try { const res=await fetch(`${API}/api/brands`); const brands=await res.json();
@@ -1599,7 +1611,7 @@
 
     // === 设置 ===
     let providersData=[];
-    async function openSettings(){document.getElementById('settingsModal').classList.add('show');await Promise.all([loadProviders(),loadLLMConfig(),loadBrandList(),loadRedditCookieConfig(),loadRedditConfig(),loadInstagramConfig(),loadFacebookConfig(),loadFilterConfig(),loadExportConfig(),loadCompetitorSpecs()]);}
+    async function openSettings(){document.getElementById('settingsModal').classList.add('show');await Promise.all([loadProviders(),loadLLMConfig(),loadBrandList(),loadRedditCookieConfig(),loadRedditConfig(),loadInstagramConfig(),loadFacebookConfig(),loadFilterConfig(),loadExportConfig(),loadClusterDeps(),loadCompetitorSpecs()]);}
     function closeSettings(){document.getElementById('settingsModal').classList.remove('show');}
     async function loadProviders(){try{const r=await fetch(`${API}/api/llm/providers`);providersData=await r.json();const s=document.getElementById('llmProvider');s.innerHTML='<option value="">请选择...</option>';providersData.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.appendChild(o);});}catch(e){}}
     async function loadLLMConfig(){try{const r=await fetch(`${API}/api/llm/config`);const c=await r.json();document.getElementById('llmProvider').value=c.provider||'';if(c.provider){onProviderChange();const k=c.api_keys[c.provider]||'';const ki=document.getElementById('llmApiKey');if(k.includes('***')){ki.value='';ki.placeholder=`已配置(${k})（留空则保留原 Key）`;}else{ki.value=k;}const m=c.models[c.provider]||'';if(m)document.getElementById('llmModel').value=m;}}catch(e){}}
@@ -1628,6 +1640,12 @@ async function testRedditCookieConnection(){const b=document.getElementById('btn
     function showQfStatus(msg,isErr){const el=document.getElementById('qfStatus');el.textContent=msg;el.style.color=isErr?'#dc3545':'var(--muted)';}
     // === 导出配置 ===
     async function loadExportConfig(){try{const r=await fetch(`${API}/api/export/config`);const c=await r.json();document.getElementById('exportDir').value=c.export_dir||'';}catch(e){}}
+
+    // === 聚类依赖目录（桌面版外部接入）===
+    function showClusterDepsStatus(msg, isError){const el=document.getElementById('clusterDepsStatus');el.textContent=msg||'';el.style.color=isError?'var(--danger)':'var(--muted)';}
+    async function loadClusterDeps(){try{const r=await fetch(`${API}/api/clustering/deps`);const c=await r.json();document.getElementById('clusterDepsPath').value=c.path||'';if(!c.frozen){showClusterDepsStatus('当前为源码模式，聚类依赖已内置，无需配置此目录。',false);}else if(c.ready){showClusterDepsStatus('聚类依赖已就绪，可直接重跑聚类。',false);}else{showClusterDepsStatus('桌面精简版未内置聚类依赖'+(c.missing&&c.missing.length?('（缺: '+c.missing.join('、')+'）'):'')+'，请配置依赖目录。',true);}}catch(e){}}
+    async function probeClusterDeps(){const path=document.getElementById('clusterDepsPath').value.trim();if(!path){showClusterDepsStatus('请先填写依赖目录路径',true);return;}showClusterDepsStatus('正在验证…',false);try{const r=await fetch(`${API}/api/clustering/deps/probe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})});const d=await r.json();showClusterDepsStatus(d.message||'验证完成',(d.ok!==true));}catch(e){showClusterDepsStatus('验证失败: '+e.message,true);}}
+    async function saveClusterDeps(){const path=document.getElementById('clusterDepsPath').value.trim();try{const r=await fetch(`${API}/api/clustering/deps`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path})});const d=await r.json();if(d.status==='ok'){showToast(d.path?'已保存聚类依赖目录':'已清空','success');showClusterDepsStatus(d.message||'',!(d.ready));}else{showToast(d.message||'保存失败','error');showClusterDepsStatus(d.message||'保存失败',true);}}catch(e){showToast('保存失败','error');showClusterDepsStatus('保存失败: '+e.message,true);}}
     async function saveExportConfig(){const dir=document.getElementById('exportDir').value.trim();try{const r=await fetch(`${API}/api/export/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({export_dir:dir})});const d=await r.json();if(d.status==='ok')showToast('导出配置已保存','success');}catch(e){showToast('保存失败','error');}}
     async function pickExportFolder(){const b=document.getElementById('btnPickFolder');b.disabled=true;b.innerHTML='<span class="spinner"></span>';try{const r=await fetch(`${API}/api/export/pick-folder`);const d=await r.json();if(d.path){document.getElementById('exportDir').value=d.path;}}catch(e){showToast('选择文件夹失败','error');}finally{b.disabled=false;b.innerHTML='浏览';}}
 async function saveLLMConfig(){const p=document.getElementById('llmProvider').value,k=document.getElementById('llmApiKey').value,m=document.getElementById('llmModel').value;if(!p){showToast('请选提供商','error');return;}const c={provider:p,api_keys:{},models:{}};if(k)c.api_keys[p]=k;c.models[p]=m;try{const r=await fetch(`${API}/api/llm/config`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});const d=await r.json();if(d.status==='ok')showToast('保存成功','success');}catch(e){showToast('失败','error');}}

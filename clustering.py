@@ -21,14 +21,46 @@ import threading
 import time
 from datetime import datetime
 
-try:
-    import numpy as np
-except ImportError:  # 桌面精简版未内置科学计算栈：簇查看/重命名可用，重跑聚类需源码模式
-    np = None
-
 import database
 
 logger = logging.getLogger(__name__)
+
+
+def _apply_external_deps_path() -> str | None:
+    """桌面精简版外部依赖接入：读取设置 clustering_deps_path（指向含聚类依赖的
+    site-packages 目录，如源码模式 venv 的 Lib\\site-packages），加入 sys.path。
+    返回实际生效的目录（未配置/无效返回 None）。"""
+    import sys
+    from pathlib import Path
+
+    try:
+        raw = (database.get_setting("clustering_deps_path", "") or "").strip().strip('"').strip("'")
+    except Exception:
+        return None
+    if not raw:
+        return None
+    p = Path(raw)
+    if not p.is_dir():
+        logger.warning("clustering_deps_path 指向的目录不存在: %s", raw)
+        return None
+    s = str(p.resolve())
+    if s not in sys.path:
+        sys.path.insert(0, s)
+        logger.info("已接入外部聚类依赖目录: %s", s)
+    return s
+
+
+try:
+    import numpy as np
+except ImportError:
+    try:
+        _apply_external_deps_path()
+    except Exception:  # 外部目录接入失败不阻断模块加载，仅记日志
+        logger.exception("接入外部聚类依赖目录失败")
+    try:
+        import numpy as np
+    except ImportError:  # 桌面精简版未内置科学计算栈：簇查看/重命名可用，重跑聚类需外部依赖目录
+        np = None
 
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
 EMBEDDING_MODEL_VERSION = "bge-m3"          # embeddings 表的 model_version 键
@@ -151,8 +183,37 @@ def _cluster_version_tag() -> str:
     return f"umap-hdbscan-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
 
+def _ensure_numpy() -> bool:
+    """运行时补载 numpy：模块加载时外部依赖目录可能尚未配置。"""
+    global np
+    if np is not None:
+        return True
+    _apply_external_deps_path()
+    try:
+        import numpy
+        np = numpy
+        return True
+    except ImportError:
+        return False
+
+
+def _format_dep_error(exc: BaseException) -> str:
+    """完整异常链摘要：transformers 等懒加载库会把真实根因吞进 __cause__。"""
+    import traceback
+
+    lines = traceback.format_exception(exc)
+    text = "".join(lines).strip()
+    return text if len(text) <= 4000 else text[:4000] + "\n…(截断)"
+
+
 def missing_clustering_deps() -> list[str]:
-    """重跑聚类所需的重量级依赖（桌面精简版可能未内置）。返回缺失包名列表。"""
+    """重跑聚类所需的重量级依赖（桌面精简版可能未内置）。
+    先尝试从设置的外部依赖目录接入，再检查；返回缺失包名列表。
+    每个缺失项附带真实异常摘要，存于 last_deps_errors（诊断用）。"""
+    global last_deps_errors
+    _apply_external_deps_path()
+    _ensure_numpy()
+    last_deps_errors = {}
     missing = []
     for module, package in (
         ("numpy", "numpy"),
@@ -162,15 +223,91 @@ def missing_clustering_deps() -> list[str]:
     ):
         try:
             __import__(module)
-        except ImportError:
+        except ImportError as e:
             missing.append(package)
+            last_deps_errors[package] = _format_dep_error(e)
+            logger.warning("聚类依赖 %s 导入失败: %s", package, last_deps_errors[package])
+        except Exception as e:  # DLL 加载失败等非 ImportError 也要拦下
+            missing.append(package)
+            last_deps_errors[package] = _format_dep_error(e)
+            logger.warning("聚类依赖 %s 导入异常: %s", package, last_deps_errors[package])
     return missing
+
+
+last_deps_errors: dict[str, str] = {}
+
+
+def probe_external_deps(path: str) -> dict:
+    """验证候选依赖目录（设置页「测试」按钮）：find_spec 只定位不执行，
+    避免 torch 级别的重导入。同时检查 C 扩展与当前 Python 的 ABI 兼容性。"""
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    raw = (path or "").strip().strip('"').strip("'")
+    result: dict = {"path": raw, "valid_dir": False, "found": {}, "abi_ok": True, "ok": False}
+    if not raw:
+        result["message"] = "请填写依赖目录路径"
+        return result
+    p = Path(raw)
+    if not p.is_dir():
+        result["message"] = f"目录不存在: {raw}"
+        return result
+    result["valid_dir"] = True
+    s = str(p.resolve())
+
+    # CPython ABI 检查：外部目录中的 .pyd 必须与当前解释器版本同标签（如 cp312）
+    impl_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
+    incompatible = []
+    for pkg_dir in ("numpy", "scipy", "numba", "llvmlite", "sklearn", "hdbscan"):
+        d = p / pkg_dir
+        if d.is_dir():
+            for pyd in d.glob("*.pyd"):
+                if f".{impl_tag}-win_amd64" not in pyd.name and f".{impl_tag}." not in pyd.name:
+                    incompatible.append(f"{pkg_dir}: {pyd.name}")
+    result["abi_ok"] = not incompatible
+    if incompatible:
+        result["message"] = (
+            f"ABI 不兼容：依赖是按 Python {'.'.join(map(str, sys.version_info[:3]))} 之外的版本编译的（{incompatible[0]} 等）。"
+            "请提供相同大版本 Python 环境的 site-packages"
+        )
+        return result
+
+    added = s not in sys.path
+    if added:
+        sys.path.insert(0, s)
+    try:
+        for module, package in (
+            ("numpy", "numpy"),
+            ("sentence_transformers", "sentence-transformers"),
+            ("umap", "umap-learn"),
+            ("hdbscan", "hdbscan"),
+            ("torch", "torch"),
+        ):
+            try:
+                spec = importlib.util.find_spec(module)
+                result["found"][module] = bool(spec)
+            except (ImportError, ValueError):
+                result["found"][module] = False
+    finally:
+        if added:
+            sys.path.remove(s)
+    missing = [pkg for pkg, ok in result["found"].items() if not ok]
+    result["missing"] = missing
+    if missing:
+        result["message"] = "目录有效但缺少: " + "、".join(missing)
+    else:
+        result["ok"] = True
+        result["message"] = "依赖目录验证通过：numpy / sentence-transformers / umap / hdbscan / torch 全部就绪"
+    return result
 
 
 _DESKTOP_LITE_MESSAGE = (
     "桌面精简版未内置聚类依赖（torch / umap / hdbscan 约 1GB，不适合单文件打包）。"
     "当前版本仍可查看已有主题簇并执行「重新命名」；如需重跑聚类，"
-    "请在源码模式安装 requirements.txt 中的聚类依赖后运行。"
+    "请在「设置 → 聚类依赖目录（桌面版）」填入源码模式 venv 的 site-packages 路径"
+    "（如 E:\\...\\voc-platform\\.venv\\Lib\\site-packages）并测试通过，"
+    "或直接在源码模式安装 requirements.txt 中的聚类依赖后运行。"
 )
 
 

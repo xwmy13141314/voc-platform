@@ -404,7 +404,7 @@ async def api_test_reddit():
         if not client_id or not client_secret:
             return {"success": False, "message": "???? client_id ? client_secret"}
         auth = _requests.auth.HTTPBasicAuth(client_id, client_secret)
-        ua = f"windows:voc-pain-point-miner:v0.8.0 (by /u/{username})" if username else "windows:voc-pain-point-miner:v0.8.0"
+        ua = crawler._build_reddit_ua(username)
         if username and password:
             data = {"grant_type": "password", "username": username, "password": password}
         else:
@@ -748,7 +748,7 @@ async def api_export_html(req: ExportHtmlModel):
 <body>
 <h1>VoC 痛点挖掘平台 — AI 改良建议报告</h1>
 <div id="reportContent"></div>
-<div class="report-meta">生成时间: {escapeHtmlJs(req.charts.get("generated_at",""))} | VoC 痛点挖掘平台 v0.9.1</div>
+<div class="report-meta">生成时间: {escapeHtmlJs(req.charts.get("generated_at",""))} | VoC 痛点挖掘平台 v{APP_VERSION}</div>
 <script>
 {echarts_js}
 </script>
@@ -970,6 +970,46 @@ def api_filter_recompute():
     """按当前配置重算全量评论过滤标记（同步跑在线程池，避免阻塞事件循环）。"""
     stats = recompute_all_filters()
     return {"status": "ok", **stats}
+
+
+# === 聚类依赖目录（桌面精简版外部接入）===
+
+@app.get("/api/clustering/deps")
+async def api_get_clustering_deps():
+    from config import FROZEN
+    from database import get_setting
+    import clustering
+    path = get_setting("clustering_deps_path", "")
+    missing = clustering.missing_clustering_deps()
+    return {"path": path, "missing": missing, "ready": not missing, "frozen": FROZEN}
+
+
+@app.post("/api/clustering/deps/probe")
+async def api_probe_clustering_deps(body: dict):
+    """验证候选依赖目录（不保存，只测试）。"""
+    import clustering
+    return clustering.probe_external_deps(body.get("path", ""))
+
+
+@app.post("/api/clustering/deps")
+async def api_save_clustering_deps(body: dict):
+    from database import set_setting
+    import clustering
+    path = (body.get("path", "") or "").strip()
+    if not path:
+        set_setting("clustering_deps_path", "")
+        return {"status": "ok", "path": "", "message": "已清空聚类依赖目录"}
+    probe = clustering.probe_external_deps(path)
+    if not probe.get("ok"):
+        return {"status": "error", "message": probe.get("message", "目录验证失败")}
+    set_setting("clustering_deps_path", probe["path"])
+    missing = clustering.missing_clustering_deps()
+    return {
+        "status": "ok",
+        "path": probe["path"],
+        "ready": not missing,
+        "message": probe.get("message", "") + ("；重跑聚类已可用" if not missing else "；仍缺: " + "、".join(missing)),
+    }
 
 
 # === 痛点聚类（v2.0 Phase 2）===

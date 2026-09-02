@@ -1,16 +1,18 @@
-"""Offline regression checks for the v0.8 desktop release."""
+"""Offline regression checks for the desktop release."""
 
 from __future__ import annotations
 
 import asyncio
 import importlib
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-_TEST_DATA = tempfile.TemporaryDirectory(prefix="voc-v08-tests-")
+_TEST_DATA = tempfile.TemporaryDirectory(prefix="voc-v12-tests-")
 os.environ["VOC_DATA_DIR"] = _TEST_DATA.name
 os.environ["VOC_INSTANCE_TOKEN"] = "smoke-test-instance"
 

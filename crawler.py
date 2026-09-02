@@ -280,7 +280,7 @@ def _build_reddit_ua(username: str = "") -> str:
     try:
         from version import APP_VERSION
     except Exception:
-        APP_VERSION = "0.8.0"
+        APP_VERSION = "1.2.0"
     uname = username.strip()
     if uname:
         return f"windows:voc-pain-point-miner:v{APP_VERSION} (by /u/{uname})"

@@ -2,7 +2,7 @@
 
 > 自动化竞品社媒评论抓取 + AI 痛点结构化分析 + 产品改良建议生成
 
-![Version](https://img.shields.io/badge/version-v1.2.0-blue)
+![Version](https://img.shields.io/badge/version-v1.2.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 ![Python](https://img.shields.io/badge/python-3.12%20x64-yellow)
@@ -12,6 +12,7 @@
 
 目标竞品品牌：**Blackview、Ulefone、Doogee、Oukitel、Unihertz** 等三防手机厂商。
 
+> **v1.2.1（2026-09-02）**：版本号显示统一（单一来源 version.py）+ 桌面精简版外部聚类依赖接入（设置页指定 site-packages 目录即可重跑聚类）。
 > **v1.2.0（2026-09-01）— v2.0 升级 Phase 1+2 交付**：新增评论质量过滤引擎（含链接垃圾/导购评论拦截）、AliExpress 电商评论接入、全局痛点聚类（BGE-M3 多语言向量化 + UMAP/HDBSCAN，79 个主题簇、簇中文命名）、「痛点聚类」页面；GLM 新增 glm-5.2/5.3；LLM 429 限流诊断细化。发布目录 `release-v1.2/`，全量变更见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
@@ -137,6 +138,8 @@
 3. 首次启动后，进入设置页面配置 LLM 提供商和 API Key
 
 > 正式数据保存在 `%LOCALAPPDATA%\VoC-Platform\data\voc.db`。仅当该文件不存在时，程序才会从发布目录的 `data/voc.db` 复制历史数据；已有数据库绝不会被覆盖。可用 `VOC_DATA_DIR` 覆盖数据目录，主要用于测试和故障排查。
+
+> **桌面版重跑聚类（可选）**：EXE 精简版不内置约 1GB 的聚类科学计算栈（torch / umap / hdbscan），查看簇与 AI 重命名开箱即用；如需在桌面版重跑聚类，在「设置 → 聚类依赖目录（桌面版）」填入已安装聚类依赖的 site-packages 目录（如源码模式 `.venv\Lib\site-packages`），点「测试」通过后保存即可，无需切换源码模式。要求该目录的 Python 版本与 EXE 一致（Python 3.12 / cp312）。
 
 ### 方式二：从源码运行（开发者）
 
@@ -540,7 +543,7 @@ dist-v1.2/VoC-Platform.exe
 - 原生扩展：显式收集 `jiter.cp312` 与 `pydantic_core.cp312`
 - 静态资源：`static/` 目录随 exe 打包
 - 图标：`app_icon.ico`
-- 排除项：matplotlib、numpy、pandas、tkinter 等不必要的大型库，以及聚类科学计算栈（torch / sentence-transformers / umap / hdbscan，约 1GB+）——桌面精简版保持约 44MB，查看簇与 AI 重命名可用，重跑聚类需源码模式（入口会返回友好提示）
+- 排除项：matplotlib、numpy、pandas、tkinter 等不必要的大型库，以及聚类科学计算栈（torch / sentence-transformers / umap / hdbscan，约 1GB+）——桌面精简版保持约 44MB，查看簇与 AI 重命名可用，重跑聚类可在设置页接入外部依赖目录（见上文说明）或使用源码模式
 - UPX 压缩：启用，减小体积
 
 > 正式交付目录为 `release-v1.2/`，其中同时放置 EXE 与 `data/voc.db` 种子库。打包后必须执行 `VoC-Platform.exe --self-test`，并核对历史数据统计。

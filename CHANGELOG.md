@@ -5,6 +5,29 @@
 
 ---
 
+## v1.2.1（2026-09-02）— 版本号统一 + 桌面版外部聚类依赖接入
+
+### 版本号显示统一（前端 / 后端）
+- 仪表盘标题徽章此前硬编码 `v0.9.1`，与顶栏 `v1.2.0` 不一致 → 改为页面加载时从 `/api/health` 动态读取，从此单一来源（version.py）
+- 改良建议报告页脚硬编码 `v0.9.1` → 引用 `APP_VERSION`
+- Reddit User-Agent（OAuth 换 token 处）硬编码 `v0.8.0` → 复用 `crawler._build_reddit_ua()`；该函数的版本回退值同步 1.2.1
+- `--self-test` 自检输出新增 `clustering_deps_missing` 字段，桌面版可快速确认聚类依赖可用性
+
+### 桌面精简版外部聚类依赖接入（clustering / main / 前端设置页）
+- 新增设置项 `clustering_deps_path`：指向已安装聚类依赖的 site-packages 目录（如源码模式 venv 的 `.venv\Lib\site-packages`）
+- 桌面版重跑聚类时自动把该目录加入 `sys.path`，按需加载 torch / sentence-transformers / umap / hdbscan（约 1GB，不打进 EXE），无需切换源码模式
+- 依赖检查链路：模块加载时若 numpy 缺失先尝试外部目录；运行时 `missing_clustering_deps()` 亦先接入外部目录并补载 numpy（支持「先启动后配置」）；缺失项附带真实异常摘要（`last_deps_errors`，self-test 与日志可见）
+- 设置页新增「聚类依赖目录（桌面版）」区块：路径输入 + 「测试」（find_spec 定位 + cp312 ABI 标签校验，不执行重导入）+ 保存即生效
+- 聚类页错误提示同步引导至设置页配置依赖目录
+- **spec 显式保留外置 ML 栈所需的 stdlib 模块**（PyInstaller 静态分析会裁剪未引用的标准库）：pickletools（torch.package）、timeit（numba）、filecmp（transformers）及 difflib/doctest/glob/queue 等 40+ 个；冻结版实测 numpy / scipy / sklearn / hdbscan / umap / torch / sentence-transformers 全链路可从外部目录加载
+- **冻结版全链路验证修复（最终自检实测）**：
+  - `tokenizers.pyd` 链接稳定 ABI 存根 `python3.dll`（非 `python312.dll`），冻结包默认不含 → spec 读取 venv 的 `pyvenv.cfg` 自动把 `python3.dll`（56KB）打进 exe 根目录，tokenizers / sentence-transformers 依赖链畅通
+  - `torch._dynamo.convert_frame` 需要 `cProfile`（→ `profile` / `pstats`），缺失时 transformers 懒加载会把真实错误吞成 `Could not import module 'PreTrainedModel'` → spec 显式补入这三个标准库模块
+  - `missing_clustering_deps` 的错误摘要升级为**完整异常链 traceback**（`_format_dep_error`），transformers 等懒加载库吞掉的 `__cause__` 根因可直接在 self-test / 日志中看到，不再需要复现排查
+  - 冻结版 `--self-test` 实测：外部目录接入后 `clustering_deps_missing` 为空，numpy / sentence-transformers / umap / hdbscan 全部就绪
+
+---
+
 ## v1.2.0（2026-09-01）— 数据质量精修 + 中文体验 + 版本治理
 
 ### 链接垃圾过滤强化（quality_filter / crawler / 前端设置页）

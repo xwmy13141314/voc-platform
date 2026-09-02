@@ -83,6 +83,13 @@ def run_self_test() -> int:
         checks["static"] = (STATIC_DIR / "index.html").is_file()
         checks["database_path"] = str(settings.DB_PATH.resolve())
         checks["stats"] = get_stats()
+        try:
+            import clustering
+            checks["clustering_deps_missing"] = clustering.missing_clustering_deps()
+            if getattr(clustering, "last_deps_errors", None):
+                checks["clustering_deps_errors"] = clustering.last_deps_errors
+        except Exception as exc:
+            checks["clustering_deps_missing"] = [f"clustering import failed: {exc}"]
         checks["ok"] = bool(checks["jiter"] and checks["static"])
     except Exception as exc:
         checks["ok"] = False
