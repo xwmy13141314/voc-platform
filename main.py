@@ -1227,6 +1227,47 @@ async def api_suggestion_evidence(suggestion_id: str):
     return get_comments_by_ids(ids)
 
 
+@app.post("/api/comments/translate")
+async def api_translate_comments(body: dict):
+    """批量将评论翻译为中文（v1.2.2：证据链/簇内评论展示）。
+    中文评论与已有全文翻译的评论自动跳过；结果永久缓存。"""
+    from fastapi.concurrency import run_in_threadpool
+
+    ids = body.get("comment_ids")
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=400, detail="缺少 comment_ids")
+    if len(ids) > 200:
+        raise HTTPException(status_code=400, detail="单次最多翻译 200 条评论")
+
+    config = get_llm_config()
+    provider = config["provider"]
+    if not provider:
+        return {"status": "error", "message": "未配置 LLM 提供商，请先在设置页面配置"}
+
+    from llm_provider import LLMClient
+    from openai import AuthenticationError
+    from translator import translate_comments
+
+    try:
+        client = LLMClient(
+            provider=provider,
+            api_key=config["api_keys"].get(provider, ""),
+            model=config["models"].get(provider, ""),
+        )
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+
+    try:
+        result = await run_in_threadpool(translate_comments, ids, client)
+    except AuthenticationError:
+        return {
+            "status": "error",
+            "message": f"{client.provider_name} 的 API Key 无效或已过期，请到设置页面重新配置",
+        }
+    result["status"] = "ok"
+    return result
+
+
 @app.get("/api/jobs")
 async def api_jobs(limit: int = 20):
     return get_recent_jobs(limit)

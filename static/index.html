@@ -1057,17 +1057,23 @@
     }
     async function runIncrementalClustering() { return runClusterJob('incremental',document.getElementById('btnIncrCluster')); }
     async function renameClusters() { return runClusterJob('rename',document.getElementById('btnRenameClusters')); }
-    async function viewClusterComments(id) {
+    async function viewClusterComments(id, silent) {
       const c=(clusterDataCache&&clusterDataCache.clusters||[]).find(x=>x.id===id);
       document.getElementById('modalTitle').textContent=c?`主题：${c.topic_name}（${c.comment_count}条）`:'簇内评论';
       const box=document.getElementById('modalContent');
       box.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem 0;">加载中...</p>';
-      document.getElementById('modal').classList.add('show');
+      if(!silent)document.getElementById('modal').classList.add('show');
       try{
         const r=await fetch(`${API}/api/clusters/${encodeURIComponent(id)}/comments?limit=50`);
         const list=await r.json();
         if(!list.length){box.innerHTML='<p style="color:var(--muted);text-align:center;padding:2rem 0;">该簇暂无评论</p>';return;}
-        box.innerHTML=list.map(m=>{
+        const pending=list.filter(m=>(!m.translation_source||m.translation_source==='summary')&&m.content_clean).length;
+        const ids=list.map(m=>m.id).join(',');
+        const trBar=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0.2rem 0 0.8rem;border-bottom:1px dashed var(--rule);margin-bottom:0.4rem;">
+          <button class="btn" style="font-size:0.75rem;padding:0.3rem 0.85rem;" data-ids="${ids}" data-rerender="cluster" data-arg="${escapeHtml(id)}" onclick="translateCurrent(this,'cc-tr-status')">🌐 AI 翻译为中文</button>
+          <span id="cc-tr-status" style="font-size:0.75rem;color:var(--muted);">${pending?pending+' 条外文评论待翻译':'全部评论已有中文'}</span>
+        </div>`;
+        box.innerHTML=trBar+list.map(m=>{
           const sev=m.severity?`<span class="badge sev-${m.severity}">严重度 ${m.severity}</span>`:'';
           let pt=m.pain_tags; if(typeof pt==='string'){try{pt=JSON.parse(pt)}catch(e){pt=[]}}
           const tags=(pt||[]).slice(0,5).map(t=>`<span>${escapeHtml(t)}</span>`).join('');
@@ -1078,7 +1084,8 @@
               ${m.sentiment_score?`<span>情感 ${m.sentiment_score}/5</span>`:''}
             </div>
             <div style="font-size:0.85rem;color:var(--ink);margin:0.35rem 0;line-height:1.55;">${escapeHtml(m.content_clean||'')}</div>
-            ${m.summary_zh?`<div style="font-size:0.75rem;color:var(--muted);">摘要：${escapeHtml(m.summary_zh)}</div>`:''}
+            ${translationLine(m)}
+            ${m.translation_source!=='summary'&&m.summary_zh?`<div style="font-size:0.75rem;color:var(--muted);">摘要：${escapeHtml(m.summary_zh)}</div>`:''}
             ${tags?`<div class="cc-kw">${tags}</div>`:''}
           </div>`;
         }).join('');
@@ -1405,41 +1412,84 @@
         <div class="sug-evidence" id="ev-${s.id}" style="display:none;"></div>
       </div>`;
     }
+    // === v1.2.2 评论中文翻译（证据链 / 簇内评论共用）===
+    function translationLine(item){
+      const zh=item.translation_zh||'';
+      if(!zh||zh===(item.content_clean||''))return '';
+      const label=(item.translation_source==='summary')?'AI 摘要':'中文翻译';
+      return `<div class="ev-zh">🇨🇳 ${label}：${escapeHtml(zh)}</div>`;
+    }
+    async function doTranslate(ids,statusEl,onDone){
+      statusEl.style.color='var(--muted)';
+      statusEl.textContent=`正在翻译 ${ids.length} 条评论（LLM 批量处理，约需 ${Math.max(5,Math.ceil(ids.length/15)*8)} 秒）...`;
+      try{
+        const r=await fetch(`${API}/api/comments/translate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({comment_ids:ids})});
+        const d=await r.json();
+        if(d.status!=='ok'){statusEl.style.color='var(--danger)';statusEl.textContent=d.message||'翻译失败';return;}
+        let msg=`✅ 本次翻译 ${d.translated} 条`;
+        if(d.skipped)msg+=`，跳过 ${d.skipped} 条（中文或已有翻译）`;
+        if(d.failed)msg+=`，失败 ${d.failed} 条`;
+        if(d.errors&&d.errors.length)msg+=`；原因：${d.errors[0]}`;
+        statusEl.textContent=msg;
+        showToast(`翻译完成：${d.translated} 条`,'success');
+        if(onDone)onDone();
+      }catch(e){statusEl.style.color='var(--danger)';statusEl.textContent='翻译失败: '+e.message;}
+    }
+    async function translateCurrent(btn,statusId){
+      const ids=(btn.dataset.ids||'').split(',').filter(Boolean);
+      if(!ids.length)return;
+      btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 翻译中...';
+      const statusEl=document.getElementById(statusId);
+      const reRender=btn.dataset.rerender;
+      const arg=btn.dataset.arg;
+      await doTranslate(ids,statusEl,async()=>{
+        if(reRender==='evidence'){evidenceCache[arg]=null;await renderEvidence(arg);}
+        else if(reRender==='cluster'){await viewClusterComments(arg,true);}
+      });
+      btn.disabled=false;btn.innerHTML='🌐 AI 翻译为中文';
+    }
     async function toggleEvidence(sid) {
       const box=document.getElementById('ev-'+sid); const btn=box.previousElementSibling.querySelector('button');
       if(box.style.display!=='none'){ box.style.display='none'; btn.innerHTML=btn.innerHTML.replace('▴','▾'); return; }
-      if(!box.innerHTML){
-        box.innerHTML='<p style="color:var(--muted);font-size:0.8rem;padding:0.6rem 0;">加载证据中...</p>';
-        try{
-          let ev=evidenceCache[sid];
-          if(!ev){
-            const r=await fetch(`${API}/api/suggestions/${encodeURIComponent(sid)}/evidence`);
-            if(!r.ok)throw new Error('HTTP '+r.status);
-            ev=await r.json(); evidenceCache[sid]=ev;
-          }
-          box.innerHTML=ev.map(e=>{
-            let pt=e.pain_tags; if(typeof pt==='string'){try{pt=JSON.parse(pt)}catch(err){pt=[]}}
-            const tags=(pt||[]).slice(0,5).map(t=>`<span class="sug-badge">${escapeHtml(t)}</span>`).join(' ');
-            const zh=e.translation_zh||e.summary_zh;
-            const root=e.pain_root_cause?`<div class="ev-root">⚙ 根因：${escapeHtml(e.pain_root_cause)}</div>`:'';
-            const ctx=e.context_environment?`<div class="ev-root">📍 场景：${escapeHtml(e.context_environment)}</div>`:'';
-            return `<div class="ev-item">
-              <div class="ev-meta">
-                <span>[${escapeHtml(e.brand_name||'?')}/${escapeHtml(e.platform||'?')}]</span>
-                ${e.severity?`<span class="badge sev-${e.severity}">严重度 ${e.severity}</span>`:''}
-                ${e.sentiment_score?`<span>情感 ${e.sentiment_score}/5</span>`:''}
-                ${e.like_count?`<span>👍 ${e.like_count}</span>`:''}
-                ${e.source_url?`<a href="${escapeHtml(e.source_url)}" target="_blank" rel="noopener noreferrer">查看原文 ↗</a>`:''}
-              </div>
-              <div class="ev-quote">${escapeHtml(e.content_clean||'')}</div>
-              ${zh&&zh!==(e.content_clean||'')?`<div class="ev-zh">🇨🇳 ${escapeHtml(zh)}</div>`:''}
-              ${ctx}${root}
-              ${tags?`<div style="margin-top:0.3rem;">${tags}</div>`:''}
-            </div>`;
-          }).join('')||'<p style="color:var(--muted);">无证据</p>';
-        }catch(e){ box.innerHTML=`<p style="color:var(--danger);font-size:0.8rem;">证据加载失败: ${escapeHtml(e.message)}</p>`; }
-      }
+      if(!box.innerHTML){ await renderEvidence(sid); }
       box.style.display='block'; btn.innerHTML=btn.innerHTML.replace('▾','▴');
+    }
+    async function renderEvidence(sid) {
+      const box=document.getElementById('ev-'+sid);
+      box.innerHTML='<p style="color:var(--muted);font-size:0.8rem;padding:0.6rem 0;">加载证据中...</p>';
+      try{
+        let ev=evidenceCache[sid];
+        if(!ev){
+          const r=await fetch(`${API}/api/suggestions/${encodeURIComponent(sid)}/evidence`);
+          if(!r.ok)throw new Error('HTTP '+r.status);
+          ev=await r.json(); evidenceCache[sid]=ev;
+        }
+        const pending=ev.filter(e=>(!e.translation_source||e.translation_source==='summary')&&e.content_clean).length;
+        const ids=ev.map(e=>e.id).join(',');
+        const items=ev.map(e=>{
+          let pt=e.pain_tags; if(typeof pt==='string'){try{pt=JSON.parse(pt)}catch(err){pt=[]}}
+          const tags=(pt||[]).slice(0,5).map(t=>`<span class="sug-badge">${escapeHtml(t)}</span>`).join(' ');
+          const root=e.pain_root_cause?`<div class="ev-root">⚙ 根因：${escapeHtml(e.pain_root_cause)}</div>`:'';
+          const ctx=e.context_environment?`<div class="ev-root">📍 场景：${escapeHtml(e.context_environment)}</div>`:'';
+          return `<div class="ev-item">
+            <div class="ev-meta">
+              <span>[${escapeHtml(e.brand_name||'?')}/${escapeHtml(e.platform||'?')}]</span>
+              ${e.severity?`<span class="badge sev-${e.severity}">严重度 ${e.severity}</span>`:''}
+              ${e.sentiment_score?`<span>情感 ${e.sentiment_score}/5</span>`:''}
+              ${e.like_count?`<span>👍 ${e.like_count}</span>`:''}
+              ${e.source_url?`<a href="${escapeHtml(e.source_url)}" target="_blank" rel="noopener noreferrer">查看原文 ↗</a>`:''}
+            </div>
+            <div class="ev-quote">${escapeHtml(e.content_clean||'')}</div>
+            ${translationLine(e)}
+            ${ctx}${root}
+            ${tags?`<div style="margin-top:0.3rem;">${tags}</div>`:''}
+          </div>`;
+        }).join('')||'<p style="color:var(--muted);">无证据</p>';
+        box.innerHTML=`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0.4rem 0 0.6rem;border-bottom:1px dashed var(--rule);">
+            <button class="btn" style="font-size:0.75rem;padding:0.3rem 0.85rem;" data-ids="${ids}" data-rerender="evidence" data-arg="${escapeHtml(sid)}" onclick="translateCurrent(this,'ev-tr-${escapeHtml(sid)}')">🌐 AI 翻译为中文</button>
+            <span id="ev-tr-${escapeHtml(sid)}" style="font-size:0.75rem;color:var(--muted);">${pending?pending+' 条外文评论待翻译':'全部评论已有中文'}</span>
+          </div>`+items;
+      }catch(e){ box.innerHTML=`<p style="color:var(--danger);font-size:0.8rem;">证据加载失败: ${escapeHtml(e.message)}</p>`; }
     }
     async function generateReportLegacy() {
       document.getElementById('legacyReportWrap').style.display='block';

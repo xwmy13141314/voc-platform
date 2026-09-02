@@ -5,6 +5,40 @@
 
 ---
 
+## v1.2.2（2026-09-02）— 评论一键 AI 中文翻译
+
+### 翻译缓存层（database）
+- 新增 `comment_translations` 表（comment_id 主键 / translation_zh / llm_model / created_at），译文永久缓存，翻译一次全站复用，不再重复消耗 LLM 额度
+- 新增 `get_comment_translations` / `save_comment_translations` 批量读写函数
+- `get_comments_by_ids` 与 `get_cluster_comments` 合并译文字段，`translation_source` 标记来源：**缓存表全文翻译 > 分析时全文翻译（analyses.translation_zh）> 中文摘要兜底（summary_zh）**，前端据此区分「中文翻译」与「AI 摘要」
+
+### 翻译引擎（translator.py 新增）
+- `translate_comments` 批量翻译：15 条/批，单次请求上限 200 条；LLM 返回 JSON 数组逐条对应，解析容错（markdown 包裹 / 前后噪声 / 忽略未知 ID 与空译文）
+- 智能跳过：中文评论（CJK 字符占比 ≥15% 判定）、已有全文翻译（缓存或分析时译文）的评论自动跳过，不发起 LLM 调用
+- 翻译 Prompt 保留口语化情绪与品牌/型号专名（不翻译），适配评论区缩写（IMO / tbh / smh）
+- 限流自动等待 3 秒重试一次；认证失败抛出由端点统一转为设置页引导提示
+
+### API（main）
+- 新增 `POST /api/comments/translate`：接收 `comment_ids`（≤200），返回 translated / skipped / failed / errors 统计；未配置 LLM 时返回友好提示而非报错
+
+### 前端（改良建议页证据链 + 痛点聚类页簇内评论）
+- 证据展开区与簇内评论列表顶部新增「翻译成中文」按钮，带耗时预估与结果统计提示（翻译 N 条、跳过 N 条、失败 N 条）
+- 外文评论下方显示译文行（🇨🇳 中文翻译 / AI 摘要来源区分），翻译完成自动刷新展示
+- 翻译完成 Toast 通知；错误（Key 无效 / 限流）复用统一提示样式
+
+### 测试
+- 新增 `tests/test_translation.py`：中文判定（含品牌名夹杂 / 纯表情边界）、LLM 返回解析容错、译文优先级合并等 19 个用例
+- E2E 验证：表创建 / 优先级合并 / 端点 400 与未配置提示 / 跳过逻辑 / 缓存复跑 / 来源标记，全部通过
+- 全量单元测试 7/7 通过（unittest discover）
+
+### 发布（release-v1.2）
+- PyInstaller 重新打包：v1.2.2 exe（约 44.5MB）替换 release-v1.2 旧文件；种子库数据原样保留（6390 评论 / 588 分析 / 924 已过滤，零丢失）
+- 冻结版 `--self-test` 实测：version=1.2.2、jiter/pydantic_core/static/数据库全部正常；translator 模块确认已入 PYZ（archive viewer 校验）
+- 使用说明.txt 同步 v1.2.2（新增 AI 翻译说明）；构建产物 build-v1.2.2 / dist-v1.2.2 已清理（约 121MB）
+- **hotfix（发布当日）**：首次打包的 exe 存在「展开证据报 `trBarHtml is not defined`」缺陷 — renderEvidence 中残留一行未定义函数调用（翻译栏实际已内联渲染，该行为死代码，仅语法检查无法发现）。已删除残留行并重新打包替换
+
+---
+
 ## v1.2.1（2026-09-02）— 版本号统一 + 桌面版外部聚类依赖接入
 
 ### 版本号显示统一（前端 / 后端）
@@ -39,8 +73,8 @@
 - 设置页新增「链接垃圾过滤」开关与阈值输入，修改后可一键全量重算
 
 ### 聚类簇中文命名（clustering）
-- 内置 150+ 三防手机赛道领域词库（英文关键词 → 中文），LLM 不可用时的降级命名自动翻译
-- 品牌/型号名（Unihertz、Ulefone Armor 等）有意保留英文，便于内部对照
+- 内置 150+ 电子产品领域词库（英文关键词 → 中文），LLM 不可用时的降级命名自动翻译
+- 品牌/型号名有意保留英文，便于内部对照
 - 79/79 簇已应用中文降级命名（如「实体键盘 · blackberry passport · 全键盘」「夜视功能 · 热成像 · 热成像相机」）
 
 ### LLM 提供商（llm_provider）

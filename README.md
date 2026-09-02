@@ -2,16 +2,17 @@
 
 > 自动化竞品社媒评论抓取 + AI 痛点结构化分析 + 产品改良建议生成
 
-![Version](https://img.shields.io/badge/version-v1.2.1-blue)
+![Version](https://img.shields.io/badge/version-v1.2.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 ![Python](https://img.shields.io/badge/python-3.12%20x64-yellow)
 ![LLM](https://img.shields.io/badge/LLM-5%20Providers-orange)
 
-**VoC 痛点挖掘平台** 是一款面向三防手机（Rugged Phone）赛道的桌面应用，由 RugOne 团队开发。平台自动从海外社交媒体抓取竞品产品评论，借助多 LLM 完成结构化痛点提取，并通过可视化看板与 AI 报告输出可落地的产品改良建议。
+**VoC 痛点挖掘平台** 是一款面向消费电子产品赛道的桌面应用，由 RugOne 团队开发。平台自动从海外社交媒体抓取竞品产品评论，借助多 LLM 完成结构化痛点提取，并通过可视化看板与 AI 报告输出可落地的产品改良建议。
 
-目标竞品品牌：**Blackview、Ulefone、Doogee、Oukitel、Unihertz** 等三防手机厂商。
+目标竞品：海外市场主流消费电子产品品牌，品牌列表支持在应用内自定义增删。
 
+> **v1.2.2（2026-09-02）**：证据链 / 簇内评论支持一键 AI 中文翻译（外文评论下方显示译文，结果永久缓存，全站复用）。
 > **v1.2.1（2026-09-02）**：版本号显示统一（单一来源 version.py）+ 桌面精简版外部聚类依赖接入（设置页指定 site-packages 目录即可重跑聚类）。
 > **v1.2.0（2026-09-01）— v2.0 升级 Phase 1+2 交付**：新增评论质量过滤引擎（含链接垃圾/导购评论拦截）、AliExpress 电商评论接入、全局痛点聚类（BGE-M3 多语言向量化 + UMAP/HDBSCAN，79 个主题簇、簇中文命名）、「痛点聚类」页面；GLM 新增 glm-5.2/5.3；LLM 429 限流诊断细化。发布目录 `release-v1.2/`，全量变更见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -223,7 +224,7 @@ python app.py
   - **增量归簇**：新评论向已有簇归并，不重跑全量
   - **重新命名**：仅对现有簇重新执行 LLM 命名（配置 Key 后一键升级语义化主题名）
 - **簇卡片**：主题名（LLM 语义命名 / 中文词库降级命名）、评论数、平均严重度、平均情感、关键词标签、簇内评论钻取
-- **LLM 不可用时**：自动降级为关键词命名并翻译为中文（内置三防手机领域词库，品牌/型号保留英文）
+- **LLM 不可用时**：自动降级为关键词命名并翻译为中文（内置电子产品领域词库，品牌/型号保留英文）
 
 ### 5. 改良建议
 
@@ -602,21 +603,9 @@ AI 分析时会从每条评论中提取以下结构化信息：
 | 4 | 正面 |
 | 5 | 极度正面 |
 
-### 默认竞品品牌
+### 默认品牌初始化
 
-应用首次启动时自动初始化以下品牌（RugOne 为自有品牌，其余为竞品）：
-
-| 品牌 | 默认搜索关键词 |
-|------|---------------|
-| Blackview | Blackview rugged phone review |
-| Ulefone | Ulefone Armor review |
-| Doogee | Doogee rugged phone review |
-| Oukitel | Oukitel rugged phone review |
-| Unihertz | Unihertz rugged phone review |
-| FOSSiBOT | FOSSiBOT rugged phone review |
-| Oscal | Oscal rugged phone review |
-| HOTWAV | HOTWAV rugged phone review |
-| RugOne（自有） | RugOne rugged phone review |
+应用首次启动时会自动初始化一组内置品牌（含自有品牌与多个竞品品牌，均可调整默认搜索关键词）。所有品牌均可在「设置 → 品牌管理」中增删改查，按需替换为自己的业务品牌列表。
 
 ---
 

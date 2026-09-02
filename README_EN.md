@@ -2,16 +2,17 @@
 
 > 中文文档 | [English Documentation](README_EN.md) | [中文文档 (Chinese)](README.md)
 
-![Version](https://img.shields.io/badge/version-v1.2.1-blue)
+![Version](https://img.shields.io/badge/version-v1.2.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 ![Python](https://img.shields.io/badge/python-3.12%20x64-yellow)
 ![Status](https://img.shields.io/badge/status-active-success)
 
-A desktop application for automated competitor social media analysis and product pain point mining, built for the **RugOne** team. The platform automatically crawls competitor product reviews from overseas social media platforms, uses AI (LLM) for structured pain point analysis, and generates actionable product improvement guidance for the rugged phone market.
+A desktop application for automated competitor social media analysis and product pain point mining, built for the **RugOne** team. The platform automatically crawls competitor product reviews from overseas social media platforms, uses AI (LLM) for structured pain point analysis, and generates actionable product improvement guidance for the consumer electronics market.
 
-**Target Brands:** Blackview, Ulefone, Doogee, Oukitel, Unihertz, and more.
+**Target Brands:** mainstream consumer electronics brands; the brand list is fully customizable in-app.
 
+> **v1.2.2 (2026-09-02):** one-click AI Chinese translation for evidence-chain and in-cluster comments (translations shown beneath foreign-language comments, permanently cached and reused platform-wide).
 > **v1.2.1 (2026-09-02):** unified version display (single source: version.py) + external clustering-deps hookup for the desktop-lite build (point Settings to a site-packages directory to re-run clustering).
 > **v1.2.0 (2026-09-01) — v2.0 upgrade Phase 1+2:** adds a configurable comment quality filter engine (incl. link-spam / promo-comment blocking), AliExpress e-commerce review ingestion, global pain point clustering (BGE-M3 multilingual embeddings + UMAP/HDBSCAN, 79 topic clusters with Chinese naming), and a dedicated Clustering page; GLM adds glm-5.2/5.3; detailed LLM 429 diagnostics. Distribution directory: `release-v1.2/`. Full history: [CHANGELOG.md](./CHANGELOG.md).
 
@@ -120,7 +121,7 @@ Packaged data is stored at `%LOCALAPPDATA%\VoC-Platform\data\voc.db`. On first l
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/RugOne/voc-platform.git
+git clone <repository-url>
 cd voc-platform
 
 # 2. (Optional) Create and activate a virtual environment
@@ -495,23 +496,9 @@ The `voc-platform.spec` file contains all build configuration including:
 
 ---
 
-## 🎯 Default Competitor Brands
+## 🎯 Default Brand Initialization
 
-The platform comes pre-loaded with 8 competitor brands and RugOne as the own-brand benchmark. Crawling and analysis run as asynchronous local jobs; poll `/api/jobs/{job_id}` for progress. Job history and all source data are kept in the local SQLite database. On Windows, API keys are stored with DPAPI when available.
-
-| Brand | Default Search Keyword |
-|-------|----------------------|
-| Blackview | `Blackview rugged phone review` |
-| Ulefone | `Ulefone Armor review` |
-| Doogee | `Doogee rugged phone review` |
-| Oukitel | `Oukitel rugged phone review` |
-| Unihertz | `Unihertz rugged phone review` |
-| FOSSiBOT | `FOSSiBOT rugged phone review` |
-| Oscal | `Oscal rugged phone review` |
-| HOTWAV | `HOTWAV rugged phone review` |
-| RugOne (own brand) | `RugOne rugged phone review` |
-
-You can add, edit, or remove brands via the Brands API or the Settings page.
+The platform ships with a set of built-in brands (one own-brand benchmark plus several competitor brands, each with an adjustable default search keyword). All brands can be added, edited, or removed via the Brands API or the Settings page, so you can replace them with your own business brand list. Crawling and analysis run as asynchronous local jobs; poll `/api/jobs/{job_id}` for progress. Job history and all source data are kept in the local SQLite database. On Windows, API keys are stored with DPAPI when available.
 
 ---
 

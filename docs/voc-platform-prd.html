@@ -432,7 +432,7 @@
     <header class="cover">
       <span class="tag">PRD · v1.3 · 2026-09-01</span>
       <h1>VoC 痛点挖掘平台</h1>
-      <p class="subtitle">海外三防手机市场竞品评论自动化抓取与 AI 痛点分析系统 — 需求规格与技术架构文档</p>
+      <p class="subtitle">海外电子产品市场竞品评论自动化抓取与 AI 痛点分析系统 — 需求规格与技术架构文档</p>
       <div class="meta">
         <span>项目方：RugOne 团队</span>
         <span>文档类型：0-to-1 产品 PRD + 技术架构</span>
@@ -471,9 +471,9 @@
       <section id="bg">
         <h2>需求背景</h2>
 
-        <p>RugOne 是一家专注于三防手机（Rugged Phone）赛道的品牌方，产品主打模块化设计与可拆卸电池，目标市场为欧洲及全球户外/工业场景用户。当前面临的核心挑战是：缺乏系统化的手段去倾听海外用户的真实声音，产品改良决策依赖经验和零散的人工调研，无法形成"听用户 → 找痛点 → 改产品"的闭环。</p>
+        <p>RugOne 是一家专注于消费电子产品的品牌方，产品主打模块化设计与可拆卸电池，目标市场为欧洲及全球用户。当前面临的核心挑战是：缺乏系统化的手段去倾听海外用户的真实声音，产品改良决策依赖经验和零散的人工调研，无法形成"听用户 → 找痛点 → 改产品"的闭环。</p>
 
-        <p>在海外三防手机赛道，9 家主要竞品（Blackview、Ulefone、Doogee、Oukitel、Unihertz、RugOne、FOSSiBOT、Oscal、HOTWAV）在 YouTube、TikTok、Reddit、Amazon 等平台沉淀了大量用户评论和评测反馈。这些评论中隐藏着关于续航、屏幕、防水、系统流畅度、App 配对等维度的真实痛点，以及用户自发提出的改良建议。但目前这些数据处于分散、多语言、非结构化的状态，人工阅读和分析的成本极高。</p>
+        <p>在海外消费电子产品市场，多家主要竞品品牌在 YouTube、TikTok、Reddit、Amazon 等平台沉淀了大量用户评论和评测反馈。这些评论中隐藏着关于续航、屏幕、防水、系统流畅度、App 配对等维度的真实痛点，以及用户自发提出的改良建议。但目前这些数据处于分散、多语言、非结构化的状态，人工阅读和分析的成本极高。</p>
 
         <div class="callout">
           <div class="callout-title">业务触发源</div>
@@ -485,7 +485,7 @@
         <div class="card-grid">
           <div class="card">
             <h4>痛点一：评论分散，人工收集效率极低</h4>
-            <p>产品经理想了解用户对 Blackview BL9000 续航的真实评价，需要手动打开 YouTube 搜视频、翻评论区，再到 Amazon、Reddit 逐条阅读。一款产品的差评收集往往耗时 2-3 天，且覆盖不全。</p>
+            <p>产品经理想了解用户对某竞品旗舰机型续航的真实评价，需要手动打开 YouTube 搜视频、翻评论区，再到 Amazon、Reddit 逐条阅读。一款产品的差评收集往往耗时 2-3 天，且覆盖不全。</p>
           </div>
           <div class="card">
             <h4>痛点二：多语言评论难以快速消化</h4>
@@ -506,7 +506,7 @@
       <section id="goals">
         <h2>需求目标</h2>
 
-        <p>本系统的核心目标是建立一个<strong>自动化的用户原声（VoC）洞察引擎</strong>，将分散在海外 6+ 平台上的三防手机竞品评论，自动转化为结构化、可检索、可对比的痛点知识库，直接服务于 RugOne 的产品改良决策。</p>
+        <p>本系统的核心目标是建立一个<strong>自动化的用户原声（VoC）洞察引擎</strong>，将分散在海外 6+ 平台上的电子产品竞品评论，自动转化为结构化、可检索、可对比的痛点知识库，直接服务于 RugOne 的产品改良决策。</p>
 
         <h3>定性目标</h3>
         <p>基于用户调研与行业经验，建立以下目标：</p>
@@ -528,7 +528,7 @@
         <h2>市场与竞品分析</h2>
 
         <h3>竞品阵营格局</h3>
-        <p>海外三防手机市场呈现明显的阵营分化，不同阵营在社媒运营重心和数据沉淀平台上差异显著<sup><a href="#cite-1">[1]</a></sup>：</p>
+        <p>海外电子产品市场呈现明显的阵营分化，不同阵营在社媒运营重心和数据沉淀平台上差异显著<sup><a href="#cite-1">[1]</a></sup>：</p>
 
         <div class="table-wrap">
           <table>
@@ -544,22 +544,22 @@
             <tbody>
               <tr>
                 <td>头部成熟</td>
-                <td>Blackview, Doogee, Ulefone, Oukitel</td>
-                <td>军工三防、大电池、热成像</td>
+                <td>阵营内多家头部品牌</td>
+                <td>大电池、热成像</td>
                 <td>TikTok 暴力测试 + YouTube 深测 + FB 促销</td>
                 <td>YouTube / Amazon / TikTok</td>
               </tr>
               <tr>
                 <td>极客差异化</td>
-                <td>Unihertz, RugOne</td>
+                <td>RugOne 等差异化品牌</td>
                 <td>全键盘/小屏、模块化/可拆卸</td>
                 <td>Reddit/FB Group 社群 + 极客博主</td>
                 <td>Reddit / YouTube / Kickstarter</td>
               </tr>
               <tr>
                 <td>新锐子品牌</td>
-                <td>Oscal, FOSSiBOT, HOTWAV</td>
-                <td>户外储能跨界、性价比</td>
+                <td>阵营内多家新锐子品牌</td>
+                <td>储能跨界、性价比</td>
                 <td>TikTok/IG 短视频 + KOC 开箱</td>
                 <td>TikTok / Amazon</td>
               </tr>
@@ -656,13 +656,13 @@
         <div class="story">
           <div class="story-role">角色 B · 品牌运营</div>
           <p><strong>使用频率</strong>：每周 1 次　<strong>痛点严重度</strong>：中</p>
-          <p><strong>核心场景</strong>：品牌运营需要了解竞品在社媒上的负面舆情，及时调整自家社媒内容策略。例如，发现 Doogee 用户集中吐槽"系统更新后变砖"，可以策划一条"RugOne 系统更新更稳定"的对比内容。</p>
+          <p><strong>核心场景</strong>：品牌运营需要了解竞品在社媒上的负面舆情，及时调整自家社媒内容策略。例如，发现竞品 A 用户集中吐槽"系统更新后变砖"，可以策划一条"RugOne 系统更新更稳定"的对比内容。</p>
         </div>
 
         <div class="story">
           <div class="story-role">角色 C · 管理层（偶发用户）</div>
           <p><strong>使用频率</strong>：每月 1 次　<strong>痛点严重度</strong>：低</p>
-          <p><strong>核心场景</strong>：管理层需要看宏观的痛点趋势报告，了解行业整体在哪些维度存在共性痛点（如所有三防机都存在"重量过大"的抱怨），辅助判断市场机会。</p>
+          <p><strong>核心场景</strong>：管理层需要看宏观的痛点趋势报告，了解行业整体在哪些维度存在共性痛点（如行业普遍存在"重量过大"的抱怨），辅助判断市场机会。</p>
         </div>
       </section>
 
@@ -735,9 +735,9 @@ flowchart LR
               <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
             </thead>
             <tbody>
-              <tr><td>竞品名称</td><td>文本</td><td>是</td><td>如 Blackview、Ulefone</td></tr>
-              <tr><td>产品型号</td><td>文本</td><td>是</td><td>如 BL9000、Armor 34 Pro</td></tr>
-              <tr><td>产品别名/搜索词</td><td>文本数组</td><td>否</td><td>用于平台搜索，如 "Blackview BL9000 review"</td></tr>
+              <tr><td>竞品名称</td><td>文本</td><td>是</td><td>如 竞品品牌名称</td></tr>
+              <tr><td>产品型号</td><td>文本</td><td>是</td><td>如 竞品型号</td></tr>
+              <tr><td>产品别名/搜索词</td><td>文本数组</td><td>否</td><td>用于平台搜索，如 "BrandA ModelX review"</td></tr>
               <tr><td>关注维度</td><td>多选</td><td>否</td><td>预设标签：续航/屏幕/防水/系统/重量/信号等</td></tr>
               <tr><td>监控状态</td><td>开关</td><td>是</td><td>开启/暂停抓取</td></tr>
             </tbody>
@@ -890,7 +890,7 @@ flowchart LR
         <h4>7.2 LLM Prompt 设计</h4>
         <p>核心分析 Prompt 采用角色设定 + 结构化输出约束的方式：</p>
 
-        <pre><code>你是一名资深智能硬件产品经理，专注于三防手机赛道。
+        <pre><code>你是一名资深智能硬件产品经理，专注于电子产品赛道。
 
 请分析以下用户评论，提取痛点信息。
 
@@ -974,14 +974,14 @@ flowchart LR
           <div id="chart-matrix" class="chart-container tall"></div>
         </figure>
 
-        <p>矩阵的横轴为痛点出现频次，纵轴为平均严重程度。落在右上象限的痛点（高频且严重）是最高优先级的改良机会。下方模拟了三防手机赛道常见的痛点分布：</p>
+        <p>矩阵的横轴为痛点出现频次，纵轴为平均严重程度。落在右上象限的痛点（高频且严重）是最高优先级的改良机会。下方模拟了电子产品赛道常见的痛点分布：</p>
 
         <figure class="chart-figure">
           <figcaption>竞品痛点维度雷达对比（模拟数据）</figcaption>
           <div id="chart-radar" class="chart-container"></div>
         </figure>
 
-        <p>雷达图对比 RugOne 与头部竞品（Blackview、Ulefone）在 6 个核心维度上的负面评论占比。越靠外表示该维度被吐槽越多，是 RugOne 的差异化改良机会。</p>
+        <p>雷达图对比 RugOne 与头部竞品在 6 个核心维度上的负面评论占比。越靠外表示该维度被吐槽越多，是 RugOne 的差异化改良机会。</p>
 
         <figure class="chart-figure">
           <figcaption>痛点趋势变化（模拟数据）</figcaption>
@@ -1441,7 +1441,7 @@ gantt
           <li><strong>聚类操作区</strong>：最小簇规模、归簇阈值参数；全量聚类 / 增量归簇 / 重新命名三种模式，任务进度实时显示</li>
           <li><strong>簇卡片</strong>：主题名（LLM 语义命名或中文词库降级命名）、评论数、平均严重度、平均情感、关键词标签</li>
           <li><strong>簇内钻取</strong>：点击「查看簇内评论」展开成员评论（平台、品牌、点赞、分析结果摘要）</li>
-          <li><strong>降级策略</strong>：LLM 不可用时自动使用关键词命名并经三防手机领域词库翻译为中文，品牌/型号名保留英文</li>
+          <li><strong>降级策略</strong>：LLM 不可用时自动使用关键词命名并经电子产品领域词库翻译为中文，品牌/型号名保留英文</li>
         </ul>
 
         <h3>页面五：改良建议</h3>
@@ -1667,11 +1667,11 @@ python -m PyInstaller --noconfirm --distpath .\dist-v1.2 --workpath .\build-v1.2
         <h2>参考资料</h2>
         <ol>
           <li id="cite-1">
-            <span class="src-title">Gemini 对话导出，9 家三防品牌社媒运营分析，2026-07-25</span>
-            <span class="src-url">用户提供的项目文档：gemini_20260725143904_我想要详细了解一下这几家品牌_Blackview_Ulefo.txt</span>
+            <span class="src-title">Gemini 对话导出，多家电子品牌社媒运营分析，2026-07-25</span>
+            <span class="src-url">用户提供的项目调研文档</span>
           </li>
           <li id="cite-2">
-            <span class="src-title">三防手机海外数据源实测调研，2026-07-25（yt-dlp + Jina Reader + WebSearch 组合验证）</span>
+            <span class="src-title">电子产品海外数据源实测调研，2026-07-25（yt-dlp + Jina Reader + WebSearch 组合验证）</span>
             <span class="src-url">调研基于实际抓取测试，YouTube 为最佳免费数据源</span>
           </li>
           <li id="cite-3">

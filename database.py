@@ -418,6 +418,16 @@ def init_db():
         )
     """)
 
+    # 评论中文翻译缓存（v1.2.2：证据/簇内评论展示用，翻译一次永久复用）
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS comment_translations (
+            comment_id TEXT PRIMARY KEY REFERENCES comments(id),
+            translation_zh TEXT NOT NULL,
+            llm_model TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     # 兼容 v0.5 已存在的数据库；CREATE TABLE 不会自动补列。
     _ensure_column(conn, "brands", "brand_type", "TEXT NOT NULL DEFAULT 'competitor'")
     _ensure_column(conn, "videos", "platform", "TEXT NOT NULL DEFAULT 'youtube'")
@@ -1982,13 +1992,28 @@ def clear_cluster_assignments():
     conn.close()
 
 
+def _pick_translation(cached: str | None, analyzed_full: str | None, summary: str | None) -> tuple[str, str]:
+    """译文优先级：缓存表全文翻译 > 分析时全文翻译 > 中文摘要兜底。
+    返回 (译文, 来源标记 cache/analysis/summary/空)。"""
+    cached = (cached or "").strip()
+    analyzed_full = (analyzed_full or "").strip()
+    summary = (summary or "").strip()
+    if cached:
+        return cached, "cache"
+    if analyzed_full:
+        return analyzed_full, "analysis"
+    if summary:
+        return summary, "summary"
+    return "", ""
+
+
 def get_cluster_comments(cluster_id: str, limit: int = 50, offset: int = 0) -> list[dict]:
-    """簇内评论，质量分降序，带分析结果与品牌名。"""
+    """簇内评论，质量分降序，带分析结果、品牌名与最优中文译文。"""
     conn = get_db()
     rows = conn.execute("""
         SELECT c.id, c.platform, c.content_clean, c.quality_score, c.like_count,
                c.source_url, b.name AS brand_name,
-               a.severity, a.sentiment_score, a.summary_zh, a.pain_tags
+               a.severity, a.sentiment_score, a.summary_zh, a.translation_zh, a.pain_tags
         FROM comments c
         LEFT JOIN brands b ON c.brand_id = b.id
         LEFT JOIN analyses a ON a.comment_id = c.id
@@ -1997,7 +2022,13 @@ def get_cluster_comments(cluster_id: str, limit: int = 50, offset: int = 0) -> l
         LIMIT ? OFFSET ?
     """, (cluster_id, limit, offset)).fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    result = [dict(r) for r in rows]
+    cached_map = get_comment_translations([r["id"] for r in result])
+    for r in result:
+        r["translation_zh"], r["translation_source"] = _pick_translation(
+            cached_map.get(r["id"]), r.get("translation_zh"), r.get("summary_zh")
+        )
+    return result
 
 
 def get_cluster_stats_for(comment_ids: list[str]) -> dict:
@@ -2184,7 +2215,9 @@ def get_suggestion_evidence_comment_ids(suggestion_id: str) -> list[str]:
 
 
 def get_comments_by_ids(comment_ids: list[str]) -> list[dict]:
-    """按 id 列表取评论详情（含分析与品牌），顺序保持输入顺序。"""
+    """按 id 列表取评论详情（含分析与品牌），顺序保持输入顺序。
+    译文优先级：comment_translations 缓存 > analyses.translation_zh > summary_zh 兜底；
+    translation_source 标记来源（cache/analysis/summary），前端据此区分「翻译」与「摘要」。"""
     if not comment_ids:
         return []
     placeholders = ",".join("?" for _ in comment_ids)
@@ -2193,15 +2226,59 @@ def get_comments_by_ids(comment_ids: list[str]) -> list[dict]:
         SELECT c.id, c.platform, c.content_clean, c.source_url, c.like_count, c.language,
                b.name AS brand_name,
                a.severity, a.sentiment_score, a.summary_zh, a.translation_zh, a.pain_tags,
-               a.context_environment, a.user_action, a.pain_root_cause
+               a.context_environment, a.user_action, a.pain_root_cause,
+               t.translation_zh AS cached_translation
         FROM comments c
         LEFT JOIN brands b ON c.brand_id = b.id
         LEFT JOIN analyses a ON a.comment_id = c.id
+        LEFT JOIN comment_translations t ON t.comment_id = c.id
         WHERE c.id IN ({placeholders})
     """, comment_ids).fetchall()
     conn.close()
     by_id = {r["id"]: dict(r) for r in rows}
-    return [by_id[cid] for cid in comment_ids if cid in by_id]
+    result = []
+    for cid in comment_ids:
+        if cid not in by_id:
+            continue
+        row = by_id[cid]
+        cached = row.pop("cached_translation")
+        row["translation_zh"], row["translation_source"] = _pick_translation(
+            cached, row.get("translation_zh"), row.get("summary_zh")
+        )
+        result.append(row)
+    return result
+
+
+def get_comment_translations(comment_ids: list[str]) -> dict[str, str]:
+    """批量读取翻译缓存，返回 {comment_id: translation_zh}。"""
+    if not comment_ids:
+        return {}
+    placeholders = ",".join("?" for _ in comment_ids)
+    conn = get_db()
+    rows = conn.execute(f"""
+        SELECT comment_id, translation_zh FROM comment_translations
+        WHERE comment_id IN ({placeholders})
+    """, comment_ids).fetchall()
+    conn.close()
+    return {r["comment_id"]: r["translation_zh"] for r in rows}
+
+
+def save_comment_translations(items: list[tuple[str, str, str]]) -> int:
+    """批量保存翻译缓存，items 为 (comment_id, translation_zh, llm_model)。"""
+    if not items:
+        return 0
+    conn = get_db()
+    cur = conn.executemany("""
+        INSERT INTO comment_translations (comment_id, translation_zh, llm_model, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+        ON CONFLICT(comment_id) DO UPDATE SET
+            translation_zh = excluded.translation_zh,
+            llm_model = excluded.llm_model,
+            created_at = datetime('now')
+    """, items)
+    conn.commit()
+    conn.close()
+    return cur.rowcount
 
 
 if __name__ == "__main__":

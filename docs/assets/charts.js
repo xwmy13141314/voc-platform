@@ -86,7 +86,7 @@
         title: { text: '竞品负面评论占比对比', left: 'center', textStyle: { color: ink, fontSize: 14 } },
         tooltip: { appendToBody: true },
         legend: {
-            data: ['Blackview', 'Ulefone', 'RugOne'],
+            data: ['竞品A', '竞品B', 'RugOne'],
             top: 30,
             textStyle: { color: muted }
         },
@@ -111,14 +111,14 @@
             data: [
                 {
                     value: [75, 68, 45, 55, 70, 40],
-                    name: 'Blackview',
+                    name: '竞品A',
                     itemStyle: { color: accent },
                     areaStyle: { color: 'rgba(0,212,255,0.1)' },
                     lineStyle: { color: accent }
                 },
                 {
                     value: [60, 55, 50, 65, 50, 35],
-                    name: 'Ulefone',
+                    name: '竞品B',
                     itemStyle: { color: accent2 },
                     areaStyle: { color: 'rgba(255,107,53,0.1)' },
                     lineStyle: { color: accent2 }
