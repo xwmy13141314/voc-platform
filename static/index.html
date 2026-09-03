@@ -1638,7 +1638,9 @@
       area.innerHTML='<div style="text-align:center;padding:3rem;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--muted);margin-top:1rem;">AI 正在生成改良提案，请耐心等待...</p></div>';
       try{
         const r=await fetch(`${API}/api/proposals/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pain_tag:tag,brand:brand||null,min_severity:Number(minSev),bom_constraint:bom,mold_constraint:mold})});
-        const d=await r.json();
+        let d;
+        try{d=await r.json();}
+        catch(_){throw new Error(`服务器返回异常（HTTP ${r.status}），请稍后重试`);}
         if(d.error){area.innerHTML=`<div class="empty"><p style="color:var(--danger);">${escapeHtml(d.error)}</p></div>`;}
         else{
           const rendered=marked.parse(d.report||'');

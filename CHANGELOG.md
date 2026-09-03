@@ -7,6 +7,15 @@
 
 ## v1.2.2（2026-09-02）— 评论一键 AI 中文翻译
 
+### Hotfix（2026-09-03）— 改良提案生成 500 错误 + 限流误报
+- **症状**：改良建议页「生成提案」报 `Unexpected token 'I', "Internal S"... is not valid JSON`（后端裸 500）
+- **根因 1**：`/api/proposals/generate` 中 `LLMClient` 构造与数据查询无异常保护 — Key 未设置 / DPAPI 解密失败时 `ValueError` 未捕获，FastAPI 直接返回 500 纯文本，前端 `r.json()` 解析失败
+- **修复**：LLMClient 构造单独捕获 `ValueError` 返回友好提示；`run_in_threadpool(_generate)` 整体兜底，任何未预期异常均返回 JSON（含异常类型）；前端 `r.json()` 解析失败时显示 `HTTP {status}` 而非语法错误细节
+- **根因 2（限流误报）**：智谱 429 错误码 1113 实为「余额不足或无可用资源包」，此前所有 RateLimitError 统一显示「请求被限流，请稍后重试」，误导排查方向；且智谱错误体为顶层 `{code, message}` 结构（无 `error` 嵌套），既有错误码提取对其实际失效
+- **修复**：`_RATE_LIMIT_CODE_HINTS` 新增 1113（余额不足，提示充值与 Coding Plan/API 资源包两套体系区别）；`_provider_error_code` / `_rate_limit_message` 兼容顶层与嵌套两种错误体结构；提案与报告端点的 429 分支改用 `_rate_limit_message` 输出具体原因
+- **验证**：Key 损坏 / Key 为空 / 真实调用三场景 API 测试 + Playwright UI 端到端（真实点击生成提案）全部通过，页面显示完整错误原因
+- 涉及文件：main.py / llm_provider.py / static/index.html
+
 ### 翻译缓存层（database）
 - 新增 `comment_translations` 表（comment_id 主键 / translation_zh / llm_model / created_at），译文永久缓存，翻译一次全站复用，不再重复消耗 LLM 额度
 - 新增 `get_comment_translations` / `save_comment_translations` 批量读写函数

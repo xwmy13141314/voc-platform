@@ -53,6 +53,8 @@ PROVIDERS = {
 
 # 智谱 429 业务错误码 → 人话提示（其他提供商仅透出原始 message）
 _RATE_LIMIT_CODE_HINTS = {
+    "1113": "账户余额不足或无可用资源包（1113），请到智谱开放平台充值或领取资源包；"
+            "注意 Coding Plan 套餐额度与 API 资源包是两套体系，API 调用消耗的是后者",
     "1302": "请求频率/并发超限（1302），请间隔几秒后再试",
     "1305": "该模型当前访问量过大（1305，服务端拥挤），建议稍后重试或暂时换用 glm-4-flash",
     "1308": "已达用量上限（1308），等额度重置后再试，或到智谱控制台查看/提升额度",
@@ -77,13 +79,20 @@ def _provider_error_body(exc) -> dict:
 def _provider_error_code(exc) -> str:
     body = _provider_error_body(exc)
     err = body.get("error") if isinstance(body, dict) else None
-    return str(err.get("code", "")).strip() if isinstance(err, dict) else ""
+    if isinstance(err, dict) and str(err.get("code", "")).strip():
+        return str(err["code"]).strip()
+    # 智谱等提供商错误体为顶层 {"code": "...", "message": "..."}（无 error 嵌套）
+    if isinstance(body, dict) and str(body.get("code", "")).strip():
+        return str(body["code"]).strip()
+    return ""
 
 
 def _rate_limit_message(exc, provider_name: str) -> str:
     body = _provider_error_body(exc)
     err = body.get("error") if isinstance(body, dict) else {}
     message = str(err.get("message", "")).strip() if isinstance(err, dict) else ""
+    if not message and isinstance(body, dict):
+        message = str(body.get("message", "")).strip()
     code = _provider_error_code(exc)
     hint = _RATE_LIMIT_CODE_HINTS.get(code)
     if hint:

@@ -1663,7 +1663,8 @@ async def api_generate_report():
             if "401" in err_str or "AuthenticationError" in type(e).__name__ or "令牌" in err_str or "token" in err_str.lower():
                 return {"error": f"LLM API Key 已过期或无效，请到设置页面更新 {config['provider'].upper()} 的 API Key"}
             if "429" in err_str or "RateLimitError" in type(e).__name__:
-                return {"error": "LLM 请求被限流，请稍后重试"}
+                from llm_provider import _rate_limit_message
+                return {"error": _rate_limit_message(e, client.provider_name)}
             if "timeout" in err_str.lower() or "TimeoutError" in type(e).__name__:
                 return {"error": "LLM 请求超时（已等待 180 秒），请检查网络连接或更换响应更快的 LLM 提供商（如 Gemini 或 DeepSeek）"}
             return {"error": f"生成失败: {type(e).__name__}: {e}"}
@@ -1830,7 +1831,10 @@ async def api_generate_proposal(req: ProposalRequestModel):
 
         api_key = config["api_keys"].get(provider, "")
         model = config["models"].get(provider, "")
-        client = LLMClient(provider=provider, api_key=api_key, model=model)
+        try:
+            client = LLMClient(provider=provider, api_key=api_key, model=model)
+        except ValueError as e:
+            return {"error": str(e)}
 
         prompt = f"""你是一名三防手机硬件产品总监，请基于以下用户痛点证据和竞品规格数据，生成一份《硬件规格改良提案》。
 
@@ -1890,12 +1894,17 @@ async def api_generate_proposal(req: ProposalRequestModel):
             if "401" in err_str or "AuthenticationError" in type(e).__name__:
                 return {"error": f"LLM API Key 已过期或无效，请到设置页面更新 {config['provider'].upper()} 的 API Key"}
             if "429" in err_str or "RateLimitError" in type(e).__name__:
-                return {"error": "LLM 请求被限流，请稍后重试"}
+                from llm_provider import _rate_limit_message
+                return {"error": _rate_limit_message(e, client.provider_name)}
             if "timeout" in err_str.lower() or "TimeoutError" in type(e).__name__:
                 return {"error": "LLM 请求超时，请检查网络后重试"}
             return {"error": f"生成失败: {type(e).__name__}: {e}"}
 
-    return await run_in_threadpool(_generate)
+    try:
+        return await run_in_threadpool(_generate)
+    except Exception as e:
+        logger.exception("提案生成失败")
+        return {"error": f"生成失败（内部错误 {type(e).__name__}）: {e}，请重试；若持续失败请检查数据或联系开发"}
 
 
 # === 质量控制 — Gold Standard（F32）===
